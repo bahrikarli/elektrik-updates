@@ -475,7 +475,17 @@
             font-weight: 600;
             font-variant-numeric: tabular-nums;
         }
-        #gunlukIslemTablo .gunluk-kalem-urun,
+        #gunlukIslemTablo .gunluk-kalem-urun {
+            font-weight: 600;
+            color: #842029;
+            white-space: normal;
+            word-break: break-word;
+            overflow: visible;
+            text-overflow: unset;
+            line-height: 1.3;
+            max-width: none;
+            min-width: 0;
+        }
         #mrHareketTablo .gunluk-kalem-urun {
             font-weight: 600;
             color: #842029;
@@ -483,15 +493,44 @@
             text-overflow: ellipsis;
             white-space: nowrap;
         }
-        #gunlukIslemTablo .gunluk-kalem-urun {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 0;
-        }
         #gunlukIslemTablo .gunluk-aciklama-hucre,
         #gunlukIslemTablo .gunluk-kalem-musteri {
-            min-width: 8.5rem;
+            min-width: 0;
+            padding-left: 0.25rem;
+            padding-right: 0.35rem;
+        }
+        #gunlukIslemTablo th:nth-child(2),
+        #gunlukIslemTablo td:nth-child(2) {
+            width: calc(11% + 3cm);
+            min-width: calc(7rem + 3cm);
+        }
+        #gunlukIslemTablo th:nth-child(1),
+        #gunlukIslemTablo td:nth-child(1) {
+            padding-right: 0.25rem;
+        }
+        #gunlukIslemTablo th:nth-child(5),
+        #gunlukIslemTablo td:nth-child(5) {
+            width: 2.2rem;
+            padding-left: 0.1rem;
+            padding-right: 0.1rem;
+        }
+        #gunlukIslemTablo th:nth-child(6),
+        #gunlukIslemTablo td:nth-child(6) {
+            width: 4.5rem;
+            padding-left: 0.15rem;
+            padding-right: 0.2rem;
+        }
+        #gunlukIslemTablo th:nth-child(7),
+        #gunlukIslemTablo td:nth-child(7) {
+            width: 5.35rem;
+            padding-left: 0.15rem;
+            padding-right: 0.25rem;
+        }
+        #gunlukIslemTablo th:nth-child(8),
+        #gunlukIslemTablo td:nth-child(8) {
+            width: 2.65rem;
+            padding-left: 0.1rem;
+            padding-right: 0.3rem;
         }
         #mdHareketTablo .gunluk-kalem-urun {
             font-weight: 600;
@@ -3024,14 +3063,14 @@
                         <div class="table-responsive rounded-3 border bg-white gunluk-islem-tablo-wrap" style="max-height: min(50vh, 420px);">
                             <table class="table table-sm table-hover align-middle mb-0" id="gunlukIslemTablo">
                                 <colgroup>
-                                    <col style="width:7.25rem">
-                                    <col style="width:26%">
-                                    <col style="width:5.5rem">
-                                    <col style="width:10%">
-                                    <col style="width:2.75rem">
-                                    <col style="width:5rem">
                                     <col style="width:6.25rem">
-                                    <col style="width:3.75rem">
+                                    <col style="width:calc(11% + 3cm)">
+                                    <col style="width:11.5%">
+                                    <col>
+                                    <col style="width:2.2rem">
+                                    <col style="width:4.5rem">
+                                    <col style="width:5.35rem">
+                                    <col style="width:2.65rem">
                                 </colgroup>
                                 <thead class="table-light sticky-top">
                                     <tr class="small text-secondary">
