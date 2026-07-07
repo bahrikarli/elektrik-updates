@@ -1,0 +1,39 @@
+ELEKTRIK - OTOMATIK GUNCELLEME (GENEL)
+======================================
+
+Bu ayar DEMO'ya ozel degil - tum kurulumlarda gecerli:
+  C:\ELEKTRIK          (gelistirici)
+  demo\                (musteri paketi)
+  Herhangi bir klasor  (ZIP'ten acilan)
+
+YAYINLAMAK (siz)
+----------------
+  1) DURDUR.bat veya programi kapat
+  2) C:\ELEKTRIK\release-all.bat
+     veya: release-all.bat 1.0.28
+  3) GitHub'a ZIP + guncelleme.json yuklenir
+
+KULLANICI / MUSTERI
+-------------------
+  Program icinde (EXE veya npm start):
+    - Giris sonrasi ustte yesil bant: "Yeni surum vX.X.X"
+    - Sürüm menusu -> Kontrol Et -> Indir ve Kur
+
+  Manuel:
+    GUNCELLE.bat   (proje veya demo klasorunde)
+
+AYARLAR (.env)
+--------------
+  Proje kokundeki .env veya
+  %LOCALAPPDATA%\Elektrik Otomasyon\.env
+
+  UPDATE_MANIFEST_URL=https://github.com/bahrikarli/elektrik-updates/releases/latest/download/guncelleme.json
+
+  Bos birakilabilir - varsayilan URL kullanilir.
+  Kapatmak: UPDATE_MANIFEST_URL=off
+
+GITHUB
+------
+  Repo: github.com/bahrikarli/elektrik-updates
+  Manifest: main/guncelleme.json
+  Paket: releases -> elektrik-otomasyon-VERSIYON.zip

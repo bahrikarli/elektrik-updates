@@ -1,0 +1,23 @@
+node_modules/
+.env
+demo/.env
+
+# Build / pkg çıktısı
+dist/
+
+# Sürüm/release artefaktları
+release-v*/
+*.exe
+!demo/Elektrik-Otomasyon-Setup.exe
+!demo/Elektrik-Otomasyon.exe
+elektrik-otomasyon-*.zip
+
+# Auto-update geçici dosyaları
+updates/staging-*/
+updates/apply-update*.cmd
+updates/apply-update*.log
+
+# Yerel/IDE/OS
+.DS_Store
+Thumbs.db
+*.log

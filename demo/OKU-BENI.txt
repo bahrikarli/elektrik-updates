@@ -1,0 +1,70 @@
+ELEKTRIK DEMO — TEK REHBER
+============================
+
+Bu klasorde sadece EXE + tarayici var. Electron / Setup yok.
+
+
+A) SIZIN PC (programi uretmek)
+------------------------------
+  ONEMLI: EXE sadece C:\ELEKTRIK icinden uretilir.
+  C:\demo veya musteri klasorunde YENI-EXE-AL.bat CALISMAZ.
+
+  1) Tum C:\ELEKTRIK projesi burada olsun (Node kurulu).
+  2) C:\ELEKTRIK\EXE-URET.bat
+     veya C:\ELEKTRIK\demo\YENI-EXE-AL.bat
+     →  Elektrik-Otomasyon.exe olusur.
+  3) demo klasorunu ZIP yap, musteriye gonder.
+
+  Yayin: release-all.bat  (veya release-all.bat 1.0.27)
+  GitHub: github.com/bahrikarli/elektrik-updates
+
+  ZIP icinde olmali:
+    Elektrik-Otomasyon.exe
+    public\ klasoru  (EXE-URET otomatik kopyalar)
+    KISAYOL-OLUSTUR.bat  (KLASORU KOPYALADIKTAN SONRA 1 KEZ — masaustu kisayolu)
+    BASLAT.lnk veya BASLAT.bat
+    baslat.vbs, baslat-arkaplan.ps1, sunucu-gizli.vbs
+    BASLAT-DENETLE.bat  (acilmazsa once bunu)
+    DURDUR.bat
+    .env  (veya .env.ornek — musteri duzenler)
+    01-demo-kullanici.sql
+    OKU-BENI.txt
+    GUNCELLE.bat
+
+
+B) MUSTERI PC (veya siz demo gosterecekseniz)
+---------------------------------------------
+  1) SQL Server Express kurulu, veritabani hazir.
+  2) SSMS ile 01-demo-kullanici.sql calistir (demo / demo123).
+  3) .env dosyasini ac — DB_SERVER, sifre BU PC'ye gore yaz.
+       Ornek: DB_SERVER=localhost\SQLEXPRESS
+  4) KISAYOL-OLUSTUR.bat calistir (kisayol bu PC yoluna ayarlanir)
+  5) Masaustundeki "Elektrik Otomasyon" veya klasordeki BASLAT.lnk
+     (tarayici sekmesi degil; masaustu uygulama penceresi)
+     Uygulama penceresi laptop ekranina otomatik sigar.
+  6) Giris: Hizli giris (admin / 1234) veya demo / demo123
+  7) DEMO SURESI: .env icinde DEMO_MODE=1 ve DEMO_GUN=30
+     Ilk calistirmadan 30 gun sonra program SADECE GORUNTULEME moduna gecer
+     (stok/cari bakilir; yeni satis ve kayit yapilamaz). Veritabani SQL'de kalir.
+     Guncelleme: .env'de UPDATE_MANIFEST_URL yazmayin (release-all ile otomatik).
+     Telefon: http://PC-IP:3010/mobil
+  8) Program penceresini kapattiginizda sunucu da kapanir.
+     Gerekirse: DURDUR.bat
+
+  GUNCELLEME: Ust klasorde GUNCELLEME.txt (genel rehber)
+  Program icinde otomatik uyari + GUNCELLE.bat
+
+
+C) SORUN
+--------
+  Sayfa acilmiyor     → SQL calisiyor mu? .env dogru mu?
+  Acilmiyorsa         → BASLAT-DENETLE.bat, sonra son-calistirma.log
+  Port 3010 mesaji    → DURDUR.bat, sonra BASLAT
+  demo giris olmuyor  → 01-demo-kullanici.sql tekrar calistir
+  Hata detayi         → son-calistirma.log
+  Windows Defender    → Elektrik-Otomasyon.exe icin izin verin
+
+
+D) GELISTIRICI DOSYALARI (musteri ZIP'ine koymayin)
+---------------------------------------------------
+  YENI-EXE-AL.bat, exe-kopyala.js, hazirla.js, db-demo.js

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Elektrik Otomasyon — Tanıtım</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #0f172a;
+      --muted: #475569;
+      --line: #e2e8f0;
+      --panel: #f8fafc;
+      --accent: #1d4ed8;
+      --accent-soft: #dbeafe;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "DM Sans", system-ui, sans-serif;
+      color: var(--ink);
+      background: #fff;
+      line-height: 1.55;
+      font-size: 15px;
+    }
+    .wrap { max-width: 920px; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
+    header {
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 1.75rem;
+      margin-bottom: 2rem;
+    }
+    header h1 { margin: 0 0 0.35rem; font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; }
+    header p { margin: 0; color: var(--muted); max-width: 52ch; }
+    .tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--accent);
+      background: var(--accent-soft);
+      padding: 0.2rem 0.55rem;
+      border-radius: 4px;
+      margin-bottom: 0.6rem;
+    }
+    h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin: 2.25rem 0 0.75rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--line);
+    }
+    h2:first-of-type { border-top: 0; padding-top: 0; margin-top: 0; }
+    ul { margin: 0.5rem 0 0; padding-left: 1.15rem; color: var(--muted); }
+    li { margin: 0.35rem 0; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 1rem 1.1rem;
+      background: var(--panel);
+    }
+    .card h3 { margin: 0 0 0.4rem; font-size: 0.95rem; font-weight: 700; }
+    .card p { margin: 0; font-size: 0.88rem; color: var(--muted); }
+    .shot {
+      margin: 1.25rem 0 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--panel);
+    }
+    .shot img { display: block; width: 100%; height: auto; }
+    .shot .cap {
+      font-size: 0.82rem;
+      color: #64748b;
+      padding: 0.5rem 0.75rem;
+      border-top: 1px solid var(--line);
+      background: #fff;
+    }
+    .shot .ph {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      min-height: 140px;
+      padding: 1.25rem;
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--muted);
+      border-top: 1px dashed #cbd5e1;
+      background: #fff;
+    }
+    .shot.is-empty .ph { display: flex; }
+    .shot.is-empty img { display: none; }
+    .shot .ph code { font-size: 0.8rem; background: var(--panel); padding: 0.15rem 0.35rem; border-radius: 4px; }
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--line);
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+    @media print {
+      body { font-size: 11pt; }
+      .wrap { max-width: 100%; padding: 0; }
+      .shot { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <span class="tag">Mağaza otomasyonu</span>
+      <h1>Elektrik Otomasyon</h1>
+      <p>Elektrikçi dükkanı için stok, hızlı satış, müşteri cari, tedarikçi, gider ve servis işlerini tek yerden yönetir. İsteğe bağlı masaüstü uygulaması ve uzaktan güncelleme desteğiyle çalışır.</p>
+    </header>
+
+    <h2>Genel bakış</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Hızlı satış</h3>
+        <p>Barkod veya ürün araması, sepet, ödeme ve onay. Barkod okutunca Enter ile sepete eklenir; çift tetikleme engellenir.</p>
+      </div>
+      <div class="card">
+        <h3>Stok</h3>
+        <p>Ürün, barkod, kategori, kritik seviye; liste ve düzenleme.</p>
+      </div>
+      <div class="card">
+        <h3>Müşteri / cari</h3>
+        <p>Müşteri kayıtları, hareketler ve satış akışları.</p>
+      </div>
+      <div class="card">
+        <h3>Tedarikçi ve gider</h3>
+        <p>Alımlar, ödemeler ve genel gider takibi.</p>
+      </div>
+      <div class="card">
+        <h3>Servis ve kâr</h3>
+        <p>Servis kayıtları, loglar ve kâr özeti.</p>
+      </div>
+      <div class="card">
+        <h3>Yedek ve sürüm</h3>
+        <p>Yedek klasörü, sürüm bilgisi; masaüstünde güncelleme indirme durumu.</p>
+      </div>
+    </div>
+
+    <h2>Ekran görüntüleri</h2>
+    <p style="color: var(--muted); font-size: 0.9rem; max-width: 62ch;">Görseller <code>public/tanitim-img/</code> içinde olmalı. Sunucu bu klasörü otomatik oluşturur. Görseller yüklenmiyorsa tarayıcıda kontrol: <a href="/api/tanitim-img-list">/api/tanitim-img-list</a> (hangi dosyaları gördüğünü listeler). Doğrudan test: <a href="/tanitim-img/01-hizli-satis.png">/tanitim-img/01-hizli-satis.png</a></p>
+
+    <div class="shot" data-shot>
+      <img src="/tanitim-img/01-hizli-satis.png?v=5" alt="Hızlı satış"
+           data-alt-src="/tanitim-img/01-hızlı-satis.png?v=5">
+      <div class="ph"><span>Eksik veya bozuk: <code>public/tanitim-img/01-hizli-satis.png</code> (Türkçe ad: <code>01-hızlı-satis.png</code>) — sunucuyu yeniden başlatın; test: <code>/tanitim-img/01-hizli-satis.png</code></span></div>
+      <div class="cap">Ana ekran — hızlı satış ve sepet</div>
+    </div>
+
+    <div class="shot" data-shot>
+      <img src="/tanitim-img/02-stok.png?v=5" alt="Stok">
+      <div class="ph"><span>Eksik: <code>public/tanitim-img/02-stok.png</code></span></div>
+      <div class="cap">Stok listesi</div>
+    </div>
+
+    <div class="shot" data-shot>
+      <img src="/tanitim-img/03-surum.png?v=5" alt="Sürüm">
+      <div class="ph"><span>Eksik: <code>public/tanitim-img/03-surum.png</code></span></div>
+      <div class="cap">Sürüm ve güncelleme durumu</div>
+    </div>
+
+    <h2>Dağıtım</h2>
+    <ul>
+      <li><strong>EXE (pkg):</strong> <code>npm run build:exe</code> — manifest ile zip güncelleme.</li>
+      <li><strong>Masaüstü:</strong> GitHub Release; <code>release-all.bat</code> veya <code>npm run publish:desktop:fresh</code>.</li>
+      <li><strong>Bağlantı:</strong> <code>.env</code> ile SQL Server.</li>
+    </ul>
+
+    <h2>Bu sayfayı açma</h2>
+    <p style="color: var(--muted); margin: 0;">Uygulama çalışırken tarayıcıda: <code>/tanitim.html</code> (ör. <code>http://127.0.0.1:3010/tanitim.html</code>)</p>
+
+    <footer>Elektrik Otomasyon — tanıtım. Yazdırma: Ctrl+P</footer>
+  </div>
+  <script>
+    document.querySelectorAll('[data-shot]').forEach(function (box) {
+      var img = box.querySelector('img');
+      if (!img) return;
+      function ok() {
+        box.classList.remove('is-empty');
+      }
+      function fail() {
+        var alt = img.getAttribute('data-alt-src');
+        if (alt) {
+          img.removeAttribute('data-alt-src');
+          img.src = alt;
+          return;
+        }
+        box.classList.add('is-empty');
+      }
+      img.addEventListener('load', ok);
+      img.addEventListener('error', fail);
+      if (img.complete) {
+        if (img.naturalWidth > 0) ok();
+        else fail();
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="ELEKTRIK">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1976d2"/>
+      <stop offset="100%" stop-color="#0d47a1"/>
+    </linearGradient>
+    <linearGradient id="bolt" x1="30%" y1="0%" x2="70%" y2="100%">
+      <stop offset="0%" stop-color="#fff176"/>
+      <stop offset="100%" stop-color="#ffb300"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <path fill="rgba(0,0,0,0.18)" transform="translate(8 10)" d="M284 58 158 252h90l-60 202 166-236h-86z"/>
+  <path fill="none" stroke="#fff" stroke-width="20" stroke-linejoin="miter" d="M284 58 158 252h90l-60 202 166-236h-86z"/>
+  <path fill="url(#bolt)" d="M284 58 158 252h90l-60 202 166-236h-86z"/>
+</svg>

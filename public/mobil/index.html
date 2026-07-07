@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0d47a1">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="ELEKTRIK">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>ELEKTRIK Mobil</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="mobil.css?v=31">
+</head>
+<body>
+  <div id="view-login" class="view view-active">
+    <div class="login-card">
+      <img class="login-logo" src="logo.svg" width="88" height="88" alt="ELEKTRIK">
+      <h1 class="login-title">ELEKTRIK</h1>
+      <p class="login-sub">Satış · Stok · Cari</p>
+      <label class="field-label" for="kullaniciAdi">Kullanıcı</label>
+      <input id="kullaniciAdi" class="field-input" type="text" autocomplete="username" autocapitalize="off">
+      <label class="field-label" for="sifre">Şifre</label>
+      <input id="sifre" class="field-input" type="password" autocomplete="current-password">
+      <button type="button" id="btnGiris" class="btn btn-primary btn-block">Giriş</button>
+      <p id="loginHata" class="login-hata" hidden></p>
+    </div>
+  </div>
+
+  <div id="view-app" class="view" hidden>
+    <header class="app-header">
+      <div class="app-header-inner">
+        <span id="headerBaslik" class="app-header-title">Satış</span>
+        <span id="aktifKullanici" class="app-header-user"></span>
+      </div>
+      <button type="button" id="btnCikis" class="btn-icon" title="Çıkış" aria-label="Çıkış">⎋</button>
+    </header>
+
+    <div id="anaSayfa" class="ana-sayfa">
+      <nav id="topNav" class="top-nav-grid" aria-label="Ana menü">
+        <button type="button" class="nav-kart" data-nav="bugun">
+          <span class="nav-kart-ikon" aria-hidden="true">📊</span>
+          <span class="nav-kart-baslik">Bugün</span>
+          <span class="nav-kart-alt">
+            <span id="navBugunIslem" class="nav-kart-satir">0 işlem</span>
+            <span id="navBugunCiro" class="nav-kart-satir nav-kart-tutar">0,00 ₺</span>
+          </span>
+        </button>
+        <button type="button" class="nav-kart nav-active" data-nav="satis">
+          <span class="nav-kart-ikon" aria-hidden="true">🛒</span>
+          <span class="nav-kart-baslik">Satış</span>
+          <span class="nav-kart-alt">
+            <span id="navSatisSepet" class="nav-kart-satir">Sepet boş</span>
+          </span>
+        </button>
+        <button type="button" class="nav-kart" data-nav="stok">
+          <span class="nav-kart-ikon" aria-hidden="true">📦</span>
+          <span class="nav-kart-baslik">Stok</span>
+          <span class="nav-kart-alt">
+            <span id="navStokSayi" class="nav-kart-satir">0 ürün</span>
+            <span id="navStokToplam" class="nav-kart-satir nav-kart-tutar">0,00 ₺</span>
+          </span>
+        </button>
+        <button type="button" class="nav-kart" data-nav="musteri">
+          <span class="nav-kart-ikon" aria-hidden="true">👤</span>
+          <span class="nav-kart-baslik">Müşteri</span>
+          <span class="nav-kart-alt">
+            <span id="navMusteriSayi" class="nav-kart-satir">0 müşteri</span>
+            <span id="navMusteriBorc" class="nav-kart-satir nav-kart-tutar">0,00 ₺</span>
+          </span>
+        </button>
+      </nav>
+
+      <section id="panel-satis" class="panel-satis-ana">
+        <div class="search-bar search-bar-scan">
+          <input id="satisArama" class="field-input satis-arama-input" type="text" inputmode="search" placeholder="Ürün adı veya barkod…" autocomplete="off" autocapitalize="off">
+          <button type="button" id="btnBarkodTara" class="btn btn-scan" title="Kamera ile barkod okut" aria-label="Barkod okut">
+            <span class="btn-scan-ikon" aria-hidden="true">📷</span>
+            <span class="btn-scan-metin">Okut</span>
+          </button>
+        </div>
+        <p class="satis-barkod-ipucu">Kamera ile barkod okutun veya barkodu yazın — okunan ürün sepete eklenir</p>
+        <div id="satisAramaSonuc" class="arama-sonuc-list" hidden></div>
+        <div class="sepet-wrap">
+          <div class="sepet-baslik">
+            <span>Sepet</span>
+            <button type="button" id="btnSepetTemizle" class="btn-text">Temizle</button>
+          </div>
+          <ul id="sepetListe" class="sepet-liste"></ul>
+          <p id="sepetBos" class="bos-metin">Sepete ürün ekleyin</p>
+          <div class="sepet-alt">
+            <span class="sepet-toplam-label">Toplam</span>
+            <span id="sepetToplam" class="sepet-toplam">0,00 ₺</span>
+          </div>
+          <button type="button" id="btnSatisTamamla" class="btn btn-primary btn-block" disabled>Satışı tamamla</button>
+        </div>
+        <div class="son-islem-wrap">
+          <div class="son-islem-baslik">
+            <h3 class="detay-baslik mb-0">Son işlemler</h3>
+            <button type="button" id="btnSonIslemTum" class="btn-text">Tümü →</button>
+          </div>
+          <ul id="sonIslemListe" class="islem-liste islem-liste-kisa"></ul>
+          <p id="sonIslemBos" class="bos-metin" hidden>Bugün henüz işlem yok</p>
+        </div>
+      </section>
+    </div>
+
+    <main id="mainPanels" class="main-panels" hidden>
+      <!-- Bugün -->
+      <section id="panel-bugun" class="panel" data-panel="bugun" hidden>
+        <div id="kasaOzetBar" class="kasa-ozet-bar kasa-ozet-panel">
+          <div class="kasa-ozet-baslik">Kasa özeti</div>
+          <div class="kasa-ozet-grid">
+            <div class="kasa-kutu kasa-nakit">
+              <span class="kasa-etiket">Nakit</span>
+              <span id="kzNakit" class="kasa-deger">—</span>
+            </div>
+            <div class="kasa-kutu kasa-kart">
+              <span class="kasa-etiket">Kart</span>
+              <span id="kzKart" class="kasa-deger">—</span>
+            </div>
+            <div class="kasa-kutu kasa-havale">
+              <span class="kasa-etiket">Havale</span>
+              <span id="kzHavale" class="kasa-deger">—</span>
+            </div>
+            <div class="kasa-kutu kasa-toplam">
+              <span class="kasa-etiket">Ciro</span>
+              <span id="kzToplam" class="kasa-deger">—</span>
+            </div>
+          </div>
+          <div class="kasa-alt-satir">
+            <span>Kasa girişi</span>
+            <strong id="kzKasaGiris">—</strong>
+          </div>
+        </div>
+        <div class="tarih-filtre">
+          <label class="tarih-filtre-alan">
+            <span class="field-label">Başlangıç</span>
+            <input type="date" id="gunlukBas" class="field-input">
+          </label>
+          <label class="tarih-filtre-alan">
+            <span class="field-label">Bitiş</span>
+            <input type="date" id="gunlukBit" class="field-input">
+          </label>
+          <button type="button" id="btnGunlukListele" class="btn btn-primary btn-filtre">Listele</button>
+        </div>
+        <div class="son-islem-baslik">
+          <h3 class="detay-baslik mb-0">Hareketler</h3>
+          <span id="gunlukIslemSayi" class="islem-sayi"></span>
+        </div>
+        <ul id="gunlukIslemListe" class="islem-liste"></ul>
+        <p id="gunlukIslemBos" class="bos-metin" hidden>Bu tarihler arasında kayıt yok</p>
+      </section>
+
+      <!-- Stok -->
+      <section id="panel-stok" class="panel" data-panel="stok" hidden>
+        <div class="panel-ust-bar">
+          <button type="button" id="btnStokEkle" class="btn btn-primary btn-sm">+ Yeni ürün</button>
+        </div>
+        <div class="search-bar">
+          <input id="stokArama" class="field-input" type="search" placeholder="Stokta ara…" autocomplete="off">
+        </div>
+        <ul id="stokListe" class="kart-liste"></ul>
+        <p id="stokBos" class="bos-metin" hidden>Kayıt yok</p>
+      </section>
+
+      <!-- Müşteri -->
+      <section id="panel-musteri" class="panel" data-panel="musteri" hidden>
+        <div class="panel-ust-bar">
+          <button type="button" id="btnMusteriEkle" class="btn btn-primary btn-sm">+ Müşteri ekle</button>
+        </div>
+        <div class="search-bar search-bar-row">
+          <input id="musteriArama" class="field-input" type="search" placeholder="Müşteri ara…" autocomplete="off">
+          <label class="chk-borc">
+            <input type="checkbox" id="musteriSadeceBorc">
+            <span>Borçlu</span>
+          </label>
+        </div>
+        <ul id="musteriListe" class="kart-liste"></ul>
+        <p id="musteriBos" class="bos-metin" hidden>Müşteri yok</p>
+      </section>
+
+      <!-- Müşteri detay -->
+      <section id="panel-musteri-detay" class="panel panel-detay" data-panel="musteri-detay" hidden>
+        <button type="button" id="btnMusteriGeri" class="btn-back">← Müşteriler</button>
+        <div id="musteriDetayOzet" class="detay-ozet"></div>
+        <div class="detay-aksiyon">
+          <button type="button" id="btnMusteriSatis" class="btn btn-primary detay-aksiyon-btn">Satış yap</button>
+          <button type="button" id="btnMusteriOdeme" class="btn btn-outline detay-aksiyon-btn">Ödeme al</button>
+          <button type="button" id="btnMusteriWhatsapp" class="btn btn-whatsapp-icon" aria-label="Cari özeti indir ve WhatsApp'ta paylaş" title="Cari özeti indir — WhatsApp'ta kişiyi siz seçin">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.884 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+          </button>
+        </div>
+        <h3 class="detay-baslik">Son hareketler</h3>
+        <ul id="musteriHareketListe" class="hareket-liste"></ul>
+      </section>
+    </main>
+
+    <button type="button" id="btnAnaGeri" class="btn-ana-geri" hidden aria-label="Ana menüye dön" title="Ana menü">←</button>
+  </div>
+
+  <!-- Müşteri cari satış -->
+  <dialog id="dlgMusteriSatis" class="mobil-dialog mobil-dialog-scroll">
+    <form id="formMusteriSatis" method="dialog" class="dialog-body">
+      <h2 class="dialog-title">Müşteriye satış</h2>
+      <p id="dlgMusteriSatisAd" class="dialog-alt"></p>
+      <div class="search-bar search-bar-scan">
+        <input id="musteriSatisArama" class="field-input satis-arama-input" type="text" inputmode="search" placeholder="Ürün adı veya barkod…" autocomplete="off" autocapitalize="off">
+        <button type="button" id="btnMusteriSatisBarkod" class="btn btn-scan" title="Barkod okut" aria-label="Barkod okut">
+          <span class="btn-scan-ikon" aria-hidden="true">📷</span>
+          <span class="btn-scan-metin">Okut</span>
+        </button>
+      </div>
+      <div id="musteriSatisAramaSonuc" class="arama-sonuc-list arama-sonuc-kucuk" hidden></div>
+      <div class="musteri-satis-sepet-wrap">
+        <div class="sepet-baslik"><span>Sepet</span></div>
+        <ul id="musteriSatisSepetListe" class="sepet-liste sepet-liste-kisa"></ul>
+        <p id="musteriSatisSepetBos" class="bos-metin">Ürün ekleyin</p>
+        <p id="musteriSatisToplam" class="dialog-toplam mb-0">0,00 ₺</p>
+      </div>
+      <fieldset class="odeme-grup">
+        <legend>Ödeme</legend>
+        <label class="odeme-opt"><input type="radio" name="musteriSatisOdeme" value="Nakit" checked> Nakit</label>
+        <label class="odeme-opt"><input type="radio" name="musteriSatisOdeme" value="Kart"> Kart</label>
+        <label class="odeme-opt"><input type="radio" name="musteriSatisOdeme" value="Havale"> Havale</label>
+        <label class="odeme-opt"><input type="radio" name="musteriSatisOdeme" value="Veresiye"> Veresiye</label>
+      </fieldset>
+      <div id="musteriSatisTahsilatBlok">
+        <label class="field-label" for="musteriSatisTahsilat">Alınan tutar (₺)</label>
+        <input id="musteriSatisTahsilat" class="field-input" type="number" min="0" step="0.01" inputmode="decimal">
+        <p class="field-hint">Kısmi ödeme: alınan kasaya, kalan cariye yazılır.</p>
+      </div>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" data-dialog-close>İptal</button>
+        <button type="submit" class="btn btn-primary" id="btnMusteriSatisKaydet" disabled>Kaydet</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Satış onay -->
+  <dialog id="dlgSatis" class="mobil-dialog">
+    <form id="formSatis" method="dialog" class="dialog-body">
+      <h2 class="dialog-title">Satışı onayla</h2>
+      <p id="dlgSatisToplam" class="dialog-toplam"></p>
+      <fieldset class="odeme-grup satis-musteri-mod">
+        <legend>Satış türü</legend>
+        <label class="odeme-opt"><input type="radio" name="satisMusteriModu" value="perakende" checked> Perakende</label>
+        <label class="odeme-opt"><input type="radio" name="satisMusteriModu" value="musteri"> Müşteriye</label>
+      </fieldset>
+      <div id="satisMusteriBlok" class="satis-musteri-blok" hidden>
+        <label class="field-label" for="satisMusteriAra">Müşteri</label>
+        <input id="satisMusteriAra" class="field-input" type="text" placeholder="Ad veya telefon ara…" autocomplete="off">
+        <input type="hidden" id="satisMusteriID">
+        <div id="satisMusteriSonuc" class="arama-sonuc-list arama-sonuc-kucuk" hidden></div>
+        <p id="satisMusteriSecili" class="secili-ozet" hidden></p>
+        <button type="button" id="btnSatisMusteriYeni" class="btn btn-outline btn-block btn-sm">+ Yeni müşteri ekle</button>
+      </div>
+      <fieldset class="odeme-grup">
+        <legend>Ödeme</legend>
+        <label class="odeme-opt"><input type="radio" name="odemeTipi" value="Nakit" checked> Nakit</label>
+        <label class="odeme-opt"><input type="radio" name="odemeTipi" value="Kart"> Kart</label>
+        <label class="odeme-opt"><input type="radio" name="odemeTipi" value="Havale"> Havale</label>
+        <label class="odeme-opt"><input type="radio" name="odemeTipi" value="Veresiye"> Veresiye</label>
+      </fieldset>
+      <div id="satisTahsilatBlok">
+        <label class="field-label" for="satisTahsilat">Alınan tutar (₺)</label>
+        <input id="satisTahsilat" class="field-input" type="number" min="0" step="0.01" inputmode="decimal">
+        <p class="field-hint">Müşteriye satışta kalan tutar cariye yazılır. Veresiyede tamamı borca eklenir.</p>
+      </div>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" data-dialog-close>İptal</button>
+        <button type="submit" class="btn btn-primary">Kaydet</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlgMusteriEkle" class="mobil-dialog">
+    <form id="formMusteriEkle" method="dialog" class="dialog-body">
+      <h2 class="dialog-title">Yeni müşteri</h2>
+      <label class="field-label" for="yeniMusteriAd">Ad Soyad</label>
+      <input id="yeniMusteriAd" class="field-input" type="text" required autocomplete="name">
+      <label class="field-label" for="yeniMusteriTel">Telefon <span class="field-opsiyonel">(isteğe bağlı)</span></label>
+      <input id="yeniMusteriTel" class="field-input" type="tel" inputmode="numeric" placeholder="5321234567">
+      <p class="field-hint">Doldurursanız 10 hane, 0 ile başlamadan</p>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" data-dialog-close>İptal</button>
+        <button type="submit" class="btn btn-primary" id="btnMusteriEkleKaydet">Kaydet</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Tahsilat -->
+  <dialog id="dlgOdeme" class="mobil-dialog">
+    <form id="formOdeme" method="dialog" class="dialog-body">
+      <h2 class="dialog-title">Tahsilat</h2>
+      <p id="dlgOdemeMusteri" class="dialog-alt"></p>
+      <label class="field-label" for="odemeTutar">Tutar (₺)</label>
+      <input id="odemeTutar" class="field-input" type="number" min="0.01" step="0.01" inputmode="decimal" required>
+      <label class="field-label">Ödeme şekli</label>
+      <select id="odemeSekli" class="field-input">
+        <option value="Nakit">Nakit</option>
+        <option value="Kart">Kart</option>
+        <option value="Havale">Havale</option>
+      </select>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" data-dialog-close>İptal</button>
+        <button type="submit" class="btn btn-primary">Kaydet</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlgStok" class="mobil-dialog mobil-dialog-scroll">
+    <form id="formStok" method="dialog" class="dialog-body">
+      <h2 class="dialog-title" id="dlgStokBaslik">Yeni ürün</h2>
+
+      <section class="stok-mbl-bolum">
+        <div class="stok-mbl-bolum-baslik">Ürün bilgisi</div>
+        <label class="field-label" for="stokUrunAdi">Ürün adı</label>
+        <input id="stokUrunAdi" class="field-input" type="text" required autocomplete="off">
+        <div class="form-grid-2">
+          <div>
+            <label class="field-label" for="stokKategori">Kategori</label>
+            <input id="stokKategori" class="field-input" type="text" list="stokKategoriListe" autocomplete="off" placeholder="Seçin veya yazın">
+          </div>
+          <div>
+            <label class="field-label" for="stokBarkod">Barkod</label>
+            <div class="stok-barkod-satir">
+              <input id="stokBarkod" class="field-input" type="text" inputmode="numeric" autocomplete="off" placeholder="Okutulan veya elle">
+              <button type="button" id="btnStokBarkodTara" class="btn btn-scan btn-scan-inline" title="Barkod okut" aria-label="Barkod okut">
+                <span class="btn-scan-ikon" aria-hidden="true">📷</span>
+                <span class="btn-scan-metin">Okut</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <datalist id="stokKategoriListe">
+        <option value="Kablolar ve İletkenler">
+        <option value="Priz, Anahtar ve Aydınlatma">
+        <option value="Sigorta ve Pano Malzemeleri">
+        <option value="Tesisat Malzemeleri ve Borular">
+        <option value="Bağlantı ve İzolasyon Malzemeleri">
+        <option value="Ölçü Aletleri ve El Aletleri">
+        <option value="İş Güvenliği Ekipmanları">
+        <option value="Yardımcı Malzemeler">
+      </datalist>
+
+      <section class="stok-mbl-bolum">
+        <div class="stok-mbl-bolum-baslik">Fiyat</div>
+        <div class="form-grid-2">
+          <div class="stok-fiyat-kutu stok-fiyat-alis">
+            <label class="field-label stok-fiyat-etiket" for="stokAlis">Alış (₺)</label>
+            <span class="stok-fiyat-aciklama">Maliyet takibi</span>
+            <input id="stokAlis" class="field-input stok-fiyat-input" type="number" min="0" step="0.01" inputmode="decimal" value="0">
+          </div>
+          <div class="stok-fiyat-kutu stok-fiyat-satis">
+            <label class="field-label stok-fiyat-etiket" for="stokSatis">Satış (₺)</label>
+            <span class="stok-fiyat-aciklama">Kasada kullanılır</span>
+            <input id="stokSatis" class="field-input stok-fiyat-input" type="number" min="0" step="0.01" inputmode="decimal" required>
+          </div>
+        </div>
+      </section>
+
+      <section class="stok-mbl-bolum stok-mbl-miktar">
+        <div class="stok-mbl-bolum-baslik stok-mbl-miktar-baslik">Stok miktarı</div>
+        <div class="form-grid-2">
+          <div>
+            <label class="field-label" for="stokMiktar">Miktar</label>
+            <input id="stokMiktar" class="field-input" type="number" step="1" inputmode="numeric" value="0">
+          </div>
+          <div>
+            <label class="field-label" for="stokBirim">Birim</label>
+            <select id="stokBirim" class="field-input">
+              <option value="Adet">Adet</option>
+              <option value="Metre">Metre</option>
+              <option value="Kutu">Kutu</option>
+              <option value="Top">Top</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section class="stok-mbl-bolum stok-mbl-uyari">
+        <div class="stok-mbl-bolum-baslik stok-mbl-uyari-baslik">Stok uyarı seviyeleri</div>
+        <p class="stok-mbl-uyari-metin">Liste ekranında stok durumu bu aralığa göre renklendirilir.</p>
+        <div class="form-grid-2">
+          <div>
+            <label class="field-label" for="stokKritik">Tehlikeli — alt sınır</label>
+            <input id="stokKritik" class="field-input" type="number" min="0" step="1" value="5">
+            <p class="field-hint">Altı kırmızı (kritik)</p>
+          </div>
+          <div>
+            <label class="field-label" for="stokHedef">Yeterli — üst sınır</label>
+            <input id="stokHedef" class="field-input" type="number" min="0" step="1" value="20">
+            <p class="field-hint">Üstü yeşil; arası sarı</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" data-dialog-close>İptal</button>
+        <button type="submit" class="btn btn-primary">Kaydet</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlgSilOnay" class="mobil-dialog">
+    <form id="formSilOnay" method="dialog" class="dialog-body">
+      <h2 class="dialog-title">Silme onayı</h2>
+      <p id="dlgSilMesaj" class="dialog-alt">Bu işlem için şifrenizi girin.</p>
+      <label class="field-label" for="silOnaySifre">Şifre</label>
+      <input id="silOnaySifre" class="field-input" type="password" autocomplete="current-password" required>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" data-dialog-close>İptal</button>
+        <button type="submit" class="btn btn-primary" style="background:var(--danger);border-color:var(--danger)">Sil</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="barkodTarayici" class="barkod-tarayici" hidden>
+    <div class="barkod-tarayici-ust">
+      <strong id="barkodTarayiciBaslik">Barkod okut</strong>
+      <button type="button" id="btnBarkodKapat" class="btn btn-ghost btn-sm">Kapat</button>
+    </div>
+    <div id="barkodReader" class="barkod-reader"></div>
+    <p id="barkodTarayiciDurum" class="barkod-durum">Kamera açılıyor…</p>
+    <div class="barkod-tarayici-alt">
+      <button type="button" id="btnBarkodFoto" class="btn btn-outline btn-block">Yedek: fotoğraf çek</button>
+      <input type="file" id="barkodFotoInput" accept="image/*" capture="environment" hidden>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+  <div id="ekstreRenderHost" class="ekstre-render-host" aria-hidden="true"></div>
+
+  <script src="vendor/html5-qrcode.min.js"></script>
+  <script src="vendor/html2canvas.min.js"></script>
+  <script src="app.js?v=44"></script>
+</body>
+</html>

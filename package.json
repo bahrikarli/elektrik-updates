@@ -1,0 +1,78 @@
+{
+  "name": "elektrik-otomasyon",
+  "version": "1.0.76",
+  "description": "Elektrikçi dükkan otomasyonu",
+  "author": "EMIR ELEKTRIK",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bahrikarli/elektrik-updates.git"
+  },
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "desktop": "electron desktop-main.js",
+    "demo": "node demo/hazirla.js && electron desktop-main.js",
+    "demo:exe": "node demo/hazirla.js && npm run start:exe",
+    "start:exe": "set OPEN_BROWSER=1&& node dist/elektrik-otomasyon.exe",
+    "build:exe": "pkg server.js --targets node18-win-x64 --output dist/elektrik-otomasyon.exe && node scripts/copy-public.js dist",
+    "build:exe:demo": "npm run build:exe && node demo/exe-kopyala.js",
+    "build:desktop": "taskkill /F /IM \"Elektrik Otomasyon.exe\" >nul 2>&1 & set CSC_IDENTITY_AUTO_DISCOVERY=false && electron-builder --win nsis",
+    "build:desktop:clean": "taskkill /F /IM \"Elektrik Otomasyon.exe\" >nul 2>&1 & rmdir /s /q dist-desktop >nul 2>&1 & set CSC_IDENTITY_AUTO_DISCOVERY=false && electron-builder --win nsis",
+    "build:desktop:fresh": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$ts=Get-Date -Format yyyyMMdd-HHmmss; $env:CSC_IDENTITY_AUTO_DISCOVERY='false'; npx electron-builder --win nsis --config.directories.output=dist-desktop-$ts\"",
+    "publish:desktop": "taskkill /F /IM \"Elektrik Otomasyon.exe\" >nul 2>&1 & set CSC_IDENTITY_AUTO_DISCOVERY=false && electron-builder --win nsis --publish always",
+    "publish:desktop:fresh": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$ts=Get-Date -Format yyyyMMdd-HHmmss; $env:CSC_IDENTITY_AUTO_DISCOVERY='false'; npx electron-builder --win nsis --publish always --config.directories.output=dist-desktop-$ts\""
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.17",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "electron-updater": "^6.6.2",
+    "express": "^4.21.0",
+    "html5-qrcode": "^2.3.8",
+    "mssql": "^11.0.1"
+  },
+  "devDependencies": {
+    "electron": "^37.1.0",
+    "electron-builder": "^26.0.12",
+    "pkg": "^5.8.1"
+  },
+  "build": {
+    "appId": "com.elektrik.otomasyon",
+    "productName": "Elektrik Otomasyon",
+    "directories": {
+      "output": "dist-desktop"
+    },
+    "files": [
+      "**/*",
+      "!dist/**",
+      "!dist-desktop/**",
+      "!dist-desktop-*/**",
+      "!release-v*/**",
+      "!node_modules/.cache/**"
+    ],
+    "extraMetadata": {
+      "main": "desktop-main.js"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "bahrikarli",
+        "repo": "elektrik-updates",
+        "releaseType": "release"
+      }
+    ]
+  },
+  "pkg": {
+    "assets": [
+      "public/**/*",
+      "lib/**/*",
+      "routes/**/*",
+      "tedarikci-schema.js",
+      "package.json"
+    ]
+  }
+}
