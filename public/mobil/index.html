@@ -163,6 +163,7 @@
           <input id="stokArama" class="field-input" type="search" placeholder="Stokta ara…" autocomplete="off">
         </div>
         <ul id="stokListe" class="kart-liste"></ul>
+        <p id="stokListeOzet" class="stok-liste-ozet" hidden></p>
         <p id="stokBos" class="bos-metin" hidden>Kayıt yok</p>
       </section>
 
@@ -242,7 +243,7 @@
   <!-- Satış onay -->
   <dialog id="dlgSatis" class="mobil-dialog">
     <form id="formSatis" method="dialog" class="dialog-body">
-      <h2 class="dialog-title">Satışı onayla</h2>
+      <h2 class="dialog-title" id="dlgSatisBaslik">Satışı onayla</h2>
       <p id="dlgSatisToplam" class="dialog-toplam"></p>
       <fieldset class="odeme-grup satis-musteri-mod">
         <legend>Satış türü</legend>
@@ -271,7 +272,7 @@
       </div>
       <div class="dialog-actions">
         <button type="button" class="btn btn-ghost" data-dialog-close>İptal</button>
-        <button type="submit" class="btn btn-primary">Kaydet</button>
+        <button type="submit" class="btn btn-primary" id="btnSatisKaydet">Kaydet</button>
       </div>
     </form>
   </dialog>

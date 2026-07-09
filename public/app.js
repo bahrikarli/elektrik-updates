@@ -3891,6 +3891,30 @@ function mobilOnekTemizle(metin) {
   return String(metin || '').replace(/^\[Mobil\]\s*/i, '').trim();
 }
 
+const PERAKENDE_ISLEM = 'Perakende İşlem';
+
+function perakendeEtiketMi(ad) {
+  const a = String(ad || '').trim();
+  return a === PERAKENDE_ISLEM || a === 'Müşterisiz işlem' || a === 'Müşterisiz';
+}
+
+function gunlukPerakendeSatirMi(row) {
+  const k = row.Kaynak || '';
+  if (k !== 'satis') return false;
+  if (Number(row.MusteriID) > 0) return false;
+  if (row.SatirTur === 'tahsilat') return false;
+  const ad = mobilOnekTemizle(row.MusteriAd || row.KisaAciklama || '');
+  if (ad && !perakendeEtiketMi(ad)) return false;
+  return true;
+}
+
+function gunlukPerakendeAksiyonSatirMi(row) {
+  if (!gunlukPerakendeSatirMi(row)) return false;
+  if (row.SatirTur === 'satis_kalem') return Number(row.KalemSira) === 0;
+  if (row.SatirTur === 'tahsilat') return false;
+  return row.SatirTur === 'satis' || !row.SatirTur;
+}
+
 function gunlukIslemAciklamaGoster(row) {
   if (row.KisaAciklama) return mobilOnekTemizle(row.KisaAciklama);
   if (row.MusteriAd) return mobilOnekTemizle(row.MusteriAd);
@@ -3898,7 +3922,7 @@ function gunlukIslemAciklamaGoster(row) {
   const k = row.Kaynak || '';
   const satisKalemSatir =
     row.SatirTur === 'satis' || k === 'musteri_satis' || (k === 'satis' && row.SatirTur !== 'tahsilat');
-  if (det.length && satisKalemSatir) return 'Müşterisiz işlem';
+  if (det.length && satisKalemSatir && k !== 'musteri_satis') return PERAKENDE_ISLEM;
   if (det.length && (k === 'kasa' || k === 'mal_alim')) {
     const ad = String(row.Aciklama || '').split(' — ')[0].trim();
     return ad || '—';
@@ -4009,6 +4033,7 @@ function gunlukIslemGruplariIsaretle(liste) {
       row.GunlukMusteriGoster = !coklu || ust;
       row.GunlukOdemeGoster = !coklu || ust;
       row.GunlukTarihGoster = !coklu || ust;
+      /* Satış üst satırda; tahsilat/ödeme rozeti tutar satırının karşısında */
       row.GunlukTurBaslikGoster = !coklu || ust || tahsilat;
       row.GunlukGrupUst = ust;
       row.GunlukGrupTahsilat = coklu && tahsilat;
@@ -4039,7 +4064,12 @@ function gunlukIslemMusteriHucre(row, metin) {
     return '<td class="gunluk-hucre-bos"></td>';
   }
   const cls = row.SatirTur === 'satis_kalem' ? 'gunluk-kalem-musteri' : 'gunluk-aciklama-hucre';
-  return `<td class="${cls}">${gunlukMetinEsc(mobilOnekTemizle(metin))}</td>`;
+  const temiz = mobilOnekTemizle(metin);
+  const icerik =
+    gunlukPerakendeSatirMi(row) || perakendeEtiketMi(temiz)
+      ? `<span class="gunluk-perakende-etiket">${PERAKENDE_ISLEM}</span>`
+      : gunlukMetinEsc(temiz);
+  return `<td class="${cls}">${icerik}</td>`;
 }
 
 function gunlukIslemTurEtiketMetin(row, turEtiket) {
@@ -4082,7 +4112,7 @@ function gunlukIslemTarihHucre(row, tarihStr) {
 
 function gunlukIslemTurHucre(row, turBadge, turEtiket, mobilIkon, ek = '') {
   if (row.GunlukTurBaslikGoster === false) {
-    return '<td class="gunluk-hucre-bos"></td>';
+    return '<td class="gunluk-hucre-bos gunluk-tur-bos"></td>';
   }
   const etiket = gunlukIslemTurEtiketMetin(row, turEtiket);
   const tahsilatTur = gunlukIslemTahsilatSatirMi(row) ? ' gunluk-tur-tahsilat' : '';
@@ -4196,11 +4226,23 @@ async function gunlukIslemleriYukle() {
           ['satis', 'kasa', 'musteri_satis', 'mal_alim'].includes(
             kaynak === 'mal_alim' || malAlimKalem ? 'mal_alim' : kaynak
           );
-        const detayBtn = detayGoster
-            ? `<button type="button" class="btn btn-sm btn-outline-primary" onclick="gunlukIslemDetayAc(${Number(row.LogID)})" title="Detay">
+        const perakendeAksiyon = gunlukPerakendeAksiyonSatirMi(row);
+        let detayBtn = '<span class="text-muted small">—</span>';
+        if (perakendeAksiyon) {
+          const lid = Number(row.GrupLogID || row.LogID);
+          detayBtn = `<div class="gunluk-islem-aksiyon d-inline-flex gap-1">
+              <button type="button" class="btn btn-sm btn-warning text-dark" onclick="gunlukPerakendeDuzenleAc(${lid})" title="Düzenle">
+                <i class="fa-solid fa-pencil"></i>
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-danger" onclick="gunlukPerakendeSil(${lid})" title="Sil">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>`;
+        } else if (detayGoster) {
+          detayBtn = `<button type="button" class="btn btn-sm btn-outline-secondary" onclick="gunlukIslemDetayAc(${Number(row.LogID)}, '${String(kaynak).replace(/'/g, "\\'")}', ${Number(row.HareketID || row.LogID)})" title="Detay">
                 <i class="fa-solid fa-circle-info"></i>
-              </button>`
-            : '<span class="text-muted small">—</span>';
+              </button>`;
+        }
 
         const faturaAlt = '';
         const grupCls = '';
@@ -4303,7 +4345,7 @@ function gunlukIslemDetaySifreOdakla() {
   }
 }
 
-async function gunlukIslemDetayAc(logID) {
+async function gunlukIslemDetayAc(logID, kaynak, hareketID) {
   const id = parseInt(logID, 10);
   if (!Number.isInteger(id) || id < 1) return;
   gunlukAktifLogID = id;
@@ -4318,7 +4360,12 @@ async function gunlukIslemDetayAc(logID) {
   if (cariBlok) cariBlok.classList.add('d-none');
   if (iptalBlok) iptalBlok.classList.add('d-none');
 
-  const res = await fetch(`/api/gunluk-islem/${id}/detay`);
+  const u = new URL(`/api/gunluk-islem/${id}/detay`, window.location.origin);
+  if (kaynak) u.searchParams.set('kaynak', String(kaynak));
+  const hid = parseInt(hareketID, 10);
+  if (Number.isInteger(hid) && hid > 0) u.searchParams.set('hareketID', String(hid));
+
+  const res = await fetch(u);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     alert(data.message || 'Detay alınamadı.');
@@ -4346,9 +4393,9 @@ async function gunlukIslemDetayAc(logID) {
     ? data.musteriAd
     : data.musteriID
       ? `Müşteri #${data.musteriID}`
-      : malAlim
+        : malAlim
         ? '—'
-        : 'Müşterisiz';
+        : PERAKENDE_ISLEM;
   document.getElementById('gidSepetToplam').textContent = gunlukParaFmt(data.sepetToplam);
   document.getElementById('gidTahsilat').textContent = gunlukParaFmt(data.tahsilatTutar);
   document.getElementById('gidVeresiye').textContent = gunlukParaFmt(data.veresiyeTutar);
@@ -4406,7 +4453,7 @@ async function gunlukIslemDetayAc(logID) {
   } else if (!data.iptalEdilebilir) {
     if (uyari) {
       uyari.textContent =
-        'Bu kayıt için güvenli iptal verisi yok (eski müşterisiz satış). Yeni müşterisiz satışlarda günlük iptal kullanılabilir.';
+        'Bu kayıt için güvenli iptal verisi yok (eski perakende satış). Yeni perakende satışlarda günlük iptal kullanılabilir.';
       uyari.classList.remove('d-none');
     }
   } else if (iptalBlok) {
@@ -4443,7 +4490,7 @@ async function gunlukIslemIptalEt() {
     alert('İptal için şifrenizi girin.');
     return;
   }
-  if (!confirm('Bu müşterisiz satışı iptal etmek istiyor musunuz? Stok ve kasa geri alınır.')) return;
+  if (!confirm('Bu perakende satışı iptal etmek istiyor musunuz? Stok ve kasa geri alınır.')) return;
 
   const btn = document.getElementById('gidIptalBtn');
   if (btn) btn.disabled = true;
@@ -4470,6 +4517,123 @@ async function gunlukIslemIptalEt() {
   } finally {
     if (btn) btn.disabled = false;
   }
+}
+
+async function gunlukPerakendeSil(logID) {
+  const id = parseInt(logID, 10);
+  if (!Number.isInteger(id) || id < 1) return;
+  const sifre = window.prompt('Perakende satışı silmek için giriş şifrenizi girin:');
+  if (!sifre) return;
+  if (!confirm('Bu perakende satış silinsin mi? Stok ve kasa geri alınır.')) return;
+  try {
+    const res = await fetch(`/api/gunluk-islem/${id}/iptal`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        kullaniciAdi: aktifKullaniciLogin || aktifKullanici,
+        sifre,
+        kullanici: aktifKullanici || 'Sistem',
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.success) {
+      alert(data.message || 'Silme başarısız.');
+      return;
+    }
+    alert(data.message || 'Satış silindi.');
+    await gunlukIslemleriYukle();
+    stoklariGetir();
+    ozetBilgileriniGetir();
+  } catch (e) {
+    console.error(e);
+    alert('Sunucu hatası.');
+  }
+}
+
+let _gunlukDuzenleLogID = null;
+
+async function gunlukPerakendeDuzenleAc(logID) {
+  const id = parseInt(logID, 10);
+  if (!Number.isInteger(id) || id < 1) return;
+  try {
+    const res = await fetch(`/api/gunluk-islem/${id}/detay`);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      alert(data.message || 'Detay alınamadı.');
+      return;
+    }
+    if (!data.duzenleEdilebilir && !data.iptalEdilebilir) {
+      if (data.musterili) {
+        alert('Bu satış müşteri carisine kayıtlı. Düzenleme ve silme müşteri carisinden yapılır.');
+      } else {
+        alert('Bu perakende satış düzenlenemez (eski kayıt veya detay eksik).');
+      }
+      return;
+    }
+    const detaylar = data.detaylar || [];
+    if (!detaylar.length) {
+      alert('Kalem detayı bulunamadı; düzenleme yapılamaz.');
+      return;
+    }
+    hizliSatisSepet = [];
+    hizliSatisSatirSayac = 0;
+    for (const d of detaylar) {
+      hizliSatisSatirSayac += 1;
+      hizliSatisSepet.push({
+        satirId: hizliSatisSatirSayac,
+        stokID: d.StokID,
+        urunAdi: d.UrunAdi || '-',
+        birim: 'Adet',
+        birimFiyat: Number(d.BirimFiyat) || 0,
+        miktar: Math.max(1, Number(d.Miktar) || 1),
+        mevcutStok: 9999,
+      });
+    }
+    _gunlukDuzenleLogID = id;
+    sepetiYenidenCiz();
+    modalSepetTablosunuDoldur();
+
+    const odeme = data.odeme || 'Nakit';
+    const radio = document.querySelector(`#hizliSatisOnayModal input[name="odemeTipi"][value="${odeme}"]`);
+    if (radio) radio.checked = true;
+    const panel = document.getElementById('hizliSatisMusteriPanel');
+    if (panel) panel.classList.add('d-none');
+    hizliSatisMusteriTemizle();
+    _hizliSatisMusteriMod = 'yok';
+    hizliSatisMusteriModuSifirla();
+    const odeyecegi = document.getElementById('hizliSatisOdeyecegiTutar');
+    if (odeyecegi) {
+      odeyecegi.dataset.manual = '0';
+      const tah = data.tahsilatTutar != null ? Number(data.tahsilatTutar) : hizliSatisSepetToplamHesapla();
+      odeyecegi.value = tah.toFixed(2);
+    }
+    const baslik = document.getElementById('hizliSatisOnayModalLabel');
+    if (baslik) {
+      baslik.innerHTML = '<i class="fa-solid fa-pencil me-2 text-warning"></i>Perakende düzenle';
+    }
+    const btn = document.getElementById('btnHizliKesinlestir');
+    if (btn) btn.innerHTML = '<i class="fa-solid fa-floppy-disk me-1"></i>Kaydet';
+
+    await gunlukIslemModalGeciciKapat();
+    const modalEl = document.getElementById('hizliSatisOnayModal');
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    hizliSatisOdemeGuncelle();
+    hizliSatisKesinlestirBtnGuncelle();
+    if (btn) btn.disabled = false;
+  } catch (e) {
+    console.error(e);
+    alert('Detay yüklenemedi.');
+  }
+}
+
+function gunlukPerakendeDuzenleSifirla() {
+  _gunlukDuzenleLogID = null;
+  const baslik = document.getElementById('hizliSatisOnayModalLabel');
+  if (baslik) {
+    baslik.innerHTML = '<i class="fa-solid fa-receipt me-2 text-warning"></i>Ödeme';
+  }
+  const btn = document.getElementById('btnHizliKesinlestir');
+  if (btn) btn.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i>Tamamla';
 }
 
 let aktifKullanici = '';
@@ -6098,6 +6262,7 @@ function hizliSatisOnayModalAc() {
     return;
   }
 
+  gunlukPerakendeDuzenleSifirla();
   modalSepetTablosunuDoldur();
 
   const nakit = document.getElementById('odemeNakit');
@@ -6125,25 +6290,34 @@ async function hizliSatisKesinlestir() {
     return;
   }
 
+  const duzenleMod = Number.isInteger(_gunlukDuzenleLogID) && _gunlukDuzenleLogID > 0;
   const odemeEl = document.querySelector('#hizliSatisOnayModal input[name="odemeTipi"]:checked');
-  const odemeTipi = odemeEl ? odemeEl.value : 'Nakit';
+  let odemeTipi = odemeEl ? odemeEl.value : 'Nakit';
 
   let musteriID = null;
-  const hidVal = document.getElementById('hizliSatisMusteriID')?.value;
-  if (hidVal) musteriID = parseInt(hidVal, 10);
+  if (!duzenleMod) {
+    const hidVal = document.getElementById('hizliSatisMusteriID')?.value;
+    if (hidVal) musteriID = parseInt(hidVal, 10);
 
-  if (odemeTipi === 'Veresiye') {
-    if (!Number.isInteger(musteriID) || musteriID < 1) {
-      alert('Veresiye satış için listeden bir müşteri seçmelisiniz.');
+    if (odemeTipi === 'Veresiye') {
+      if (!Number.isInteger(musteriID) || musteriID < 1) {
+        alert('Veresiye satış için listeden bir müşteri seçmelisiniz.');
+        return;
+      }
+    } else if (_hizliSatisMusteriMod !== 'sec' && _hizliSatisMusteriMod !== 'yok') {
+      alert('Devam etmek için «Müşteri seç» veya «Müşteri seçmeden bitir» seçeneklerinden birini işaretleyin.');
+      return;
+    } else if (_hizliSatisMusteriMod === 'sec' && (!Number.isInteger(musteriID) || musteriID < 1)) {
+      alert('Müşteri seç modundasınız — listeden bir müşteri seçin.');
+      return;
+    } else if (_hizliSatisMusteriMod === 'yok') {
+      musteriID = null;
+    }
+  } else {
+    if (odemeTipi === 'Veresiye') {
+      alert('Perakende düzenlemede veresiye kullanılamaz.');
       return;
     }
-  } else if (_hizliSatisMusteriMod !== 'sec' && _hizliSatisMusteriMod !== 'yok') {
-    alert('Devam etmek için «Müşteri seç» veya «Müşteri seçmeden bitir» seçeneklerinden birini işaretleyin.');
-    return;
-  } else if (_hizliSatisMusteriMod === 'sec' && (!Number.isInteger(musteriID) || musteriID < 1)) {
-    alert('Müşteri seç modundasınız — listeden bir müşteri seçin.');
-    return;
-  } else if (_hizliSatisMusteriMod === 'yok') {
     musteriID = null;
   }
 
@@ -6154,7 +6328,12 @@ async function hizliSatisKesinlestir() {
     return;
   }
   tahsilatTutar = Math.round(tahsilatTutar * 100) / 100;
+  if (duzenleMod && tahsilatTutar > sepetToplam) {
+    alert('Tahsilat tutarı sepet toplamını geçemez.');
+    return;
+  }
   if (
+    !duzenleMod &&
     odemeTipi !== 'Veresiye' &&
     Number.isInteger(musteriID) &&
     musteriID > 0 &&
@@ -6176,13 +6355,22 @@ async function hizliSatisKesinlestir() {
     odemeTipi,
     tahsilatTutar,
   };
-  if (Number.isInteger(musteriID) && musteriID > 0) body.musteriID = musteriID;
+  if (!duzenleMod && Number.isInteger(musteriID) && musteriID > 0) body.musteriID = musteriID;
 
-  const kaydedilenMusteriID = Number.isInteger(musteriID) && musteriID > 0 ? musteriID : null;
+  let sifre = null;
+  if (duzenleMod) {
+    sifre = window.prompt('Değişiklikleri kaydetmek için giriş şifrenizi girin:');
+    if (!sifre) return;
+    body.kullaniciAdi = aktifKullaniciLogin || aktifKullanici;
+    body.sifre = sifre;
+  }
+
+  const kaydedilenMusteriID = !duzenleMod && Number.isInteger(musteriID) && musteriID > 0 ? musteriID : null;
   const btn = document.getElementById('btnHizliKesinlestir');
   if (btn) btn.disabled = true;
 
-  const res = await fetch('/api/satis-sepet', {
+  const url = duzenleMod ? `/api/gunluk-islem/${_gunlukDuzenleLogID}/duzenle` : '/api/satis-sepet';
+  const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -6195,11 +6383,26 @@ async function hizliSatisKesinlestir() {
   } catch (_) {}
 
   if (res.ok && payload && payload.success) {
+    const duzenleModKayit = duzenleMod;
+    gunlukPerakendeDuzenleSifirla();
     const modalEl = document.getElementById('hizliSatisOnayModal');
     const inst = bootstrap.Modal.getInstance(modalEl);
     const sonrasi = async () => {
-      await hizliSatisKesinlestirSonrasi(kaydedilenMusteriID);
-      odemeSonrasiBildir(null, payload?.makbuz);
+      if (duzenleModKayit) {
+        hizliSatisSepet = [];
+        sepetiYenidenCiz();
+        await gunlukIslemleriYukle();
+        stoklariGetir();
+        ozetBilgileriniGetir();
+        if (gunlukIslemModalGeriAc) {
+          bootstrap.Modal.getOrCreateInstance(document.getElementById('gunlukIslemModal')).show();
+          gunlukIslemModalGeriAc = false;
+        }
+        alert(payload.message || 'Perakende satış güncellendi.');
+      } else {
+        await hizliSatisKesinlestirSonrasi(kaydedilenMusteriID);
+        odemeSonrasiBildir(null, payload?.makbuz);
+      }
     };
     if (inst && modalEl) {
       modalEl.addEventListener('hidden.bs.modal', sonrasi, { once: true });
@@ -6208,7 +6411,7 @@ async function hizliSatisKesinlestir() {
       await sonrasi();
     }
   } else {
-    const msg = (payload && payload.message) || raw || 'Satış tamamlanamadı.';
+    const msg = (payload && payload.message) || raw || (duzenleMod ? 'Düzenleme başarısız.' : 'Satış tamamlanamadı.');
     alert(msg);
     hizliSatisKesinlestirBtnGuncelle();
   }
@@ -6216,6 +6419,10 @@ async function hizliSatisKesinlestir() {
 
 document.querySelectorAll('input[name="odemeTipi"]').forEach((el) => {
   el.addEventListener('change', hizliSatisOdemeGuncelle);
+});
+
+document.getElementById('hizliSatisOnayModal')?.addEventListener('hidden.bs.modal', () => {
+  if (_gunlukDuzenleLogID) gunlukPerakendeDuzenleSifirla();
 });
 
 // ---------- TEDARİKÇİ ----------

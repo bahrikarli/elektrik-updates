@@ -271,6 +271,27 @@
         .ozet-rozet-tikla { cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease; }
         .ozet-rozet-tikla:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important; }
         .gunluk-ozet-kutu { border-radius: 12px; padding: 0.65rem 0.85rem; font-size: 0.9rem; }
+        .gunluk-islem-tablo-wrap { box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06); }
+        #gunlukIslemTablo thead th {
+            font-size: 0.72rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+            color: #64748b;
+            border-bottom-width: 1px;
+        }
+        #gunlukIslemTablo tbody td { font-size: 0.84rem; vertical-align: middle; }
+        #gunlukIslemTablo .gunluk-islem-aksiyon .btn { padding: 0.2rem 0.45rem; }
+        #gunlukIslemTablo .gunluk-perakende-etiket {
+            display: inline-block;
+            font-size: 0.72rem;
+            font-weight: 600;
+            padding: 0.15rem 0.5rem;
+            border-radius: 999px;
+            background: #fef9c3;
+            color: #713f12;
+            border: 1px solid #fde047;
+        }
         .ozet-rozet-kutu .ozet-rozet-ust {
             font-size: 1.65rem;
             line-height: 1.15;
@@ -504,6 +525,17 @@
             width: calc(11% + 3cm);
             min-width: calc(7rem + 3cm);
         }
+        #gunlukIslemTablo th:nth-child(3),
+        #gunlukIslemTablo td:nth-child(3),
+        #mdHareketTablo th:nth-child(3),
+        #mdHareketTablo td:nth-child(3),
+        #mrHareketTablo th:nth-child(3),
+        #mrHareketTablo td:nth-child(3) {
+            text-align: center;
+            vertical-align: middle;
+            padding-left: 0.35rem;
+            padding-right: 0.35rem;
+        }
         #gunlukIslemTablo th:nth-child(1),
         #gunlukIslemTablo td:nth-child(1) {
             padding-right: 0.25rem;
@@ -607,28 +639,26 @@
         #gunlukIslemTablo tr.gunluk-islem-grup-son td,
         #mdHareketTablo tr.gunluk-islem-grup-son td,
         #mrHareketTablo tr.gunluk-islem-grup-son td {
-            border-bottom: 2px solid #94a3b8 !important;
-            box-shadow: inset 0 -1px 0 #cbd5e1;
-        }
-        #gunlukIslemTablo tr.gunluk-islem-grup-son td:first-child,
-        #mdHareketTablo tr.gunluk-islem-grup-son td:first-child,
-        #mrHareketTablo tr.gunluk-islem-grup-son td:first-child {
-            border-bottom-left-radius: 2px;
-        }
-        #gunlukIslemTablo tr.gunluk-islem-grup-son td:last-child,
-        #mdHareketTablo tr.gunluk-islem-grup-son td:last-child,
-        #mrHareketTablo tr.gunluk-islem-grup-son td:last-child {
-            border-bottom-right-radius: 2px;
+            border-bottom: 3px solid #334155 !important;
+            box-shadow: none;
+            padding-bottom: 0.55rem;
         }
         #gunlukIslemTablo tr.gunluk-grup-ust td,
         #mdHareketTablo tr.gunluk-grup-ust td,
         #mrHareketTablo tr.gunluk-grup-ust td {
             background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
+            padding-top: 0.6rem;
+        }
+        #gunlukIslemTablo tr.gunluk-grup-ust:not(:first-child) td,
+        #mdHareketTablo tr.gunluk-grup-ust:not(:first-child) td,
+        #mrHareketTablo tr.gunluk-grup-ust:not(:first-child) td {
+            border-top: 2px solid #e2e8f0;
         }
         #gunlukIslemTablo tr.gunluk-grup-tahsilat td,
         #mdHareketTablo tr.gunluk-grup-tahsilat td,
         #mrHareketTablo tr.gunluk-grup-tahsilat td {
             background: #f0fdf4;
+            vertical-align: middle;
         }
         #gunlukIslemTablo td.gunluk-hucre-bos,
         #mdHareketTablo td.gunluk-hucre-bos,
@@ -659,22 +689,34 @@
         #gunlukIslemTablo tr.gunluk-grup-tahsilat td,
         #mdHareketTablo tr.gunluk-grup-tahsilat td,
         #mrHareketTablo tr.gunluk-grup-tahsilat td {
-            vertical-align: top;
+            vertical-align: middle;
             border-top: none !important;
-            padding-top: 0.4rem;
+            padding-top: 0.35rem;
+            padding-bottom: 0.35rem;
         }
         #gunlukIslemTablo tr.gunluk-grup-tahsilat .gunluk-tur-tahsilat,
         #mdHareketTablo tr.gunluk-grup-tahsilat .gunluk-tur-tahsilat,
         #mrHareketTablo tr.gunluk-grup-tahsilat .gunluk-tur-tahsilat {
-            padding-left: 0;
+            text-align: center;
         }
         #gunlukIslemTablo tr.gunluk-grup-tahsilat .gunluk-tur-tahsilat .badge,
         #mdHareketTablo tr.gunluk-grup-tahsilat .gunluk-tur-tahsilat .badge,
         #mrHareketTablo tr.gunluk-grup-tahsilat .gunluk-tur-tahsilat .badge {
             position: relative;
             z-index: 1;
-            margin-left: -0.2rem;
+            margin-left: 0;
             box-shadow: 0 0 0 3px #f0fdf4;
+        }
+        #gunlukIslemTablo .gunluk-tur-hucre,
+        #mdHareketTablo .gunluk-tur-hucre,
+        #mrHareketTablo .gunluk-tur-hucre {
+            text-align: center;
+            vertical-align: middle;
+        }
+        #gunlukIslemTablo .gunluk-tur-hucre.gunluk-tur-tahsilat,
+        #mdHareketTablo .gunluk-tur-hucre.gunluk-tur-tahsilat,
+        #mrHareketTablo .gunluk-tur-hucre.gunluk-tur-tahsilat {
+            text-align: center;
         }
         #gunlukIslemTablo .gunluk-tur-hucre .badge,
         #mdHareketTablo .gunluk-tur-hucre .badge,
@@ -682,6 +724,8 @@
             white-space: nowrap;
             display: inline-block;
             vertical-align: middle;
+            margin-left: 0;
+            margin-right: 0;
         }
         #gunlukIslemTablo tr.gunluk-tahsilat-satir td,
         #mdHareketTablo tr.gunluk-tahsilat-satir td,
@@ -2962,8 +3006,8 @@
                 <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
                     <div class="modal-header text-white border-0 py-3 px-4" style="background: linear-gradient(120deg, #166534 0%, #15803d 50%, #0f766e 100%);">
                         <div>
-                            <h5 class="modal-title fw-bold mb-0" id="gunlukIslemModalLabel"><i class="fa-solid fa-receipt me-2"></i>Günlük işlemler</h5>
-                            <small class="text-white-50">Satış geliri + kasa çıkışları (tedarikçi + genel gider) aynı listede</small>
+                            <h5 class="modal-title fw-bold mb-0" id="gunlukIslemModalLabel"><i class="fa-solid fa-calendar-day me-2"></i>Günlük işlemler</h5>
+                            <small class="text-white-50">Seçilen tarihteki satış, tahsilat ve gider kayıtları</small>
                         </div>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
                     </div>
@@ -3070,18 +3114,18 @@
                                     <col style="width:2.2rem">
                                     <col style="width:4.5rem">
                                     <col style="width:5.35rem">
-                                    <col style="width:2.65rem">
+                                    <col style="width:4.75rem">
                                 </colgroup>
                                 <thead class="table-light sticky-top">
                                     <tr class="small text-secondary">
                                         <th>Tarih / saat</th>
                                         <th>Açıklama</th>
-                                        <th>Tür</th>
+                                        <th class="text-center">Tür</th>
                                         <th>Ürün / hizmet</th>
                                         <th class="text-center">Adet</th>
                                         <th class="text-end">Birim</th>
                                         <th class="text-end">Tutar</th>
-                                        <th class="text-end">Detay</th>
+                                        <th class="text-end">İşlem</th>
                                     </tr>
                                 </thead>
                                 <tbody id="gunlukIslemTablosu">
@@ -3140,7 +3184,7 @@
                             </button>
                         </div>
                         <div id="gidIptalBlok" class="border rounded bg-white p-3">
-                            <p class="small text-secondary mb-2">Müşterisiz satış — iptal buradan yapılır. Şifrenizi girin; stok ve kasa geri alınır.</p>
+                            <p class="small text-secondary mb-2">Perakende satış — iptal buradan yapılır. Şifrenizi girin; stok ve kasa geri alınır.</p>
                             <div class="row g-2 align-items-end">
                                 <div class="col-md-5">
                                     <label class="form-label small mb-0">Şifre</label>

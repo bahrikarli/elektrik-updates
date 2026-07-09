@@ -17,6 +17,12 @@ require('./lib/env-yukle').envYukle();
 const app = express();
 const APP_ROOT = process.pkg ? path.dirname(process.execPath) : __dirname;
 const demoLisans = require('./lib/demo-lisans');
+const PERAKENDE_ISLEM_ETIKET = 'Perakende İşlem';
+
+function perakendeEtiketMi(ad) {
+  const a = String(ad || '').trim();
+  return a === PERAKENDE_ISLEM_ETIKET || a === 'Müşterisiz işlem' || a === 'Müşterisiz';
+}
 
 function publicKlasoruBul() {
   const adaylar = [
@@ -3410,57 +3416,29 @@ async function hizliSatisKayitIptalIsaretle(pool, kayitID, kullanici) {
   }
 }
 
-/** Günlük listeden düşürülecek (iptal edilmiş) orijinal log ID'leri */
+/** Günlük listeden düşürülecek (iptal edilmiş) hızlı satış LogID / KayitID seti */
 async function gunlukIptalEdilmisLogIdleri(pool, basStr, bitStr) {
   const ids = new Set();
-  if (await tabloVarMi(pool, 'HizliSatisKayitlari')) {
-    try {
-      const rs = await pool.request()
-        .input('bas', sql.NVarChar(10), basStr)
-        .input('bit', sql.NVarChar(10), bitStr)
-        .query(`
-          SELECT DISTINCT k.LogID
-          FROM HizliSatisKayitlari k
-          INNER JOIN IslemGecmisi g ON g.LogID = k.LogID
-          WHERE k.IptalEdildi = 1
-            AND k.LogID IS NOT NULL
-            AND CAST(g.Tarih AS DATE) >= CAST(@bas AS DATE)
-            AND CAST(g.Tarih AS DATE) <= CAST(@bit AS DATE)
-        `);
-      for (const row of rs.recordset || []) {
-        const lid = Number(row.LogID);
-        if (lid) ids.add(lid);
-      }
-    } catch (err) {
-      console.warn('İptal log listesi (HSK) okunamadı:', err.message);
-    }
-  }
+  if (!(await tabloVarMi(pool, 'HizliSatisKayitlari'))) return ids;
   try {
-    const iptalRs = await pool.request()
+    const rs = await pool.request()
       .input('bas', sql.NVarChar(10), basStr)
       .input('bit', sql.NVarChar(10), bitStr)
       .query(`
-        SELECT Aciklama FROM IslemGecmisi
-        WHERE CAST(Tarih AS DATE) >= CAST(@bas AS DATE)
+        SELECT LogID, KayitID
+        FROM HizliSatisKayitlari
+        WHERE IptalEdildi = 1
+          AND CAST(Tarih AS DATE) >= CAST(@bas AS DATE)
           AND CAST(Tarih AS DATE) <= CAST(@bit AS DATE)
-          AND (
-            IslemTipi IN (
-              N'Hızlı Satış İptal', N'Hizli Satis Iptal',
-              N'Müşteri Satış İptal', N'Musteri Satis Iptal',
-              N'Müşteri Ödeme İptal', N'Musteri Odeme Iptal'
-            )
-            OR (IslemTipi LIKE N'%ptal%' AND IslemTipi LIKE N'%at%')
-          )
       `);
-    for (const row of iptalRs.recordset || []) {
-      const m = String(row.Aciklama || '').match(/Log\s*#\s*(\d+)/i);
-      if (m) {
-        const lid = parseInt(m[1], 10);
-        if (Number.isInteger(lid) && lid > 0) ids.add(lid);
-      }
+    for (const row of rs.recordset || []) {
+      const lid = Number(row.LogID);
+      const kid = Number(row.KayitID);
+      if (lid) ids.add(lid);
+      if (kid) ids.add(kid);
     }
   } catch (err) {
-    console.warn('İptal log listesi (IslemGecmisi) okunamadı:', err.message);
+    console.warn('İptal hızlı satış listesi okunamadı:', err.message);
   }
   return ids;
 }
@@ -3708,6 +3686,108 @@ async function hizliSatisKayitIptalEt(pool, kayit, kullanici) {
   }
 }
 
+/** Müşterisiz hızlı satış kaydını günceller (stok + kasa farkı uygulanır). */
+async function hizliSatisKayitGuncelle(pool, kayit, log, opts) {
+  if (!kayit || kayit.IptalEdildi) {
+    return { success: false, status: 400, message: 'Bu satış düzenlenemez.' };
+  }
+  if (kayit.MusteriID) {
+    return { success: false, status: 400, message: 'Müşterili satış buradan düzenlenemez.' };
+  }
+  const { satirlar, genelToplam, kasaTutar, odemeRaw, kullanici } = opts;
+  if (!satirlar?.length) {
+    return { success: false, status: 400, message: 'Sepet boş.' };
+  }
+
+  const detRs = await pool.request()
+    .input('KayitID', sql.Int, kayit.KayitID)
+    .query('SELECT StokID, Miktar FROM HizliSatisKayitDetaylari WHERE KayitID = @KayitID');
+
+  const transaction = new sql.Transaction(pool);
+  await transaction.begin();
+  try {
+    for (const d of detRs.recordset || []) {
+      if (!d.StokID || !d.Miktar) continue;
+      await new sql.Request(transaction)
+        .input('StokID', sql.Int, d.StokID)
+        .input('Miktar', sql.Int, d.Miktar)
+        .query('UPDATE Stok SET MevcutMiktar = MevcutMiktar + @Miktar WHERE StokID = @StokID');
+    }
+
+    const eskiTahsilat = Number(kayit.TahsilatTutar || 0);
+    if (eskiTahsilat > 0) {
+      let kasaAciklama = `Hızlı satış düzenleme (eski) [#${kayit.KayitID}]`;
+      if (kasaAciklama.length > 255) kasaAciklama = kasaAciklama.substring(0, 252) + '…';
+      await kasayaIsleTxn(transaction, 'Cikis', eskiTahsilat, kasaAciklama, kullanici);
+    }
+
+    await new sql.Request(transaction)
+      .input('KayitID', sql.Int, kayit.KayitID)
+      .query('DELETE FROM HizliSatisKayitDetaylari WHERE KayitID = @KayitID');
+
+    for (const s of satirlar) {
+      if (!(await stokSatisDusurTxn(transaction, s.stokID, s.miktar))) {
+        await transaction.rollback();
+        return { success: false, status: 409, message: 'Stok kaydı güncellenemedi (yetersiz stok olabilir).' };
+      }
+    }
+
+    if (odemeRaw !== 'Veresiye' && kasaTutar > 0) {
+      let kasaAciklama = `Hızlı satış düzenleme (${satirlar.length} kalem) [${odemeRaw}]`;
+      if (kasaAciklama.length > 255) kasaAciklama = kasaAciklama.substring(0, 252) + '…';
+      await kasayaIsleTxn(transaction, 'Giris', kasaTutar, kasaAciklama, kullanici);
+    }
+
+    await new sql.Request(transaction)
+      .input('KayitID', sql.Int, kayit.KayitID)
+      .input('SepetToplam', sql.Decimal(18, 2), genelToplam)
+      .input('TahsilatTutar', sql.Decimal(18, 2), kasaTutar)
+      .input('OdemeSekli', sql.NVarChar(20), String(odemeRaw || 'Nakit').substring(0, 20))
+      .query(`
+        UPDATE HizliSatisKayitlari
+        SET SepetToplam = @SepetToplam, TahsilatTutar = @TahsilatTutar, OdemeSekli = @OdemeSekli
+        WHERE KayitID = @KayitID
+      `);
+
+    for (const s of satirlar) {
+      const birim =
+        s.birimFiyat != null && Number.isFinite(s.birimFiyat)
+          ? s.birimFiyat
+          : s.miktar > 0
+            ? Math.round((s.satirTutar / s.miktar) * 100) / 100
+            : 0;
+      await new sql.Request(transaction)
+        .input('KayitID', sql.Int, kayit.KayitID)
+        .input('StokID', sql.Int, s.stokID || null)
+        .input('UrunAdi', sql.NVarChar(150), String(s.urunAdi || '').substring(0, 150))
+        .input('Miktar', sql.Int, s.miktar)
+        .input('BirimFiyat', sql.Decimal(18, 2), birim)
+        .input('SatirTutar', sql.Decimal(18, 2), s.satirTutar)
+        .query(`
+          INSERT INTO HizliSatisKayitDetaylari
+            (KayitID, StokID, UrunAdi, Miktar, BirimFiyat, SatirTutar)
+          VALUES (@KayitID, @StokID, @UrunAdi, @Miktar, @BirimFiyat, @SatirTutar)
+        `);
+    }
+
+    if (log?.LogID) {
+      const logAciklama = `Hızlı satış ${genelToplam}₺, tahsilat ${kasaTutar}₺ [${odemeRaw}]`;
+      await new sql.Request(transaction)
+        .input('LogID', sql.Int, log.LogID)
+        .input('Aciklama', sql.NVarChar(500), logAciklama.substring(0, 500))
+        .query('UPDATE IslemGecmisi SET Aciklama = @Aciklama WHERE LogID = @LogID');
+    }
+
+    await transaction.commit();
+    return { success: true, message: 'Perakende satış güncellendi.' };
+  } catch (innerErr) {
+    try {
+      await transaction.rollback();
+    } catch (_) {}
+    throw innerErr;
+  }
+}
+
 function sqlRowSayi(v) {
   if (v == null || v === '') return 0;
   if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
@@ -3858,7 +3938,7 @@ async function gunlukMalAlimKalemleri(pool, row, tumIslemler = null) {
   const toplamKaynak =
     mal && mal.toplam > 0 ? mal.toplam : Number(row.AlimToplam) > 0 ? Number(row.AlimToplam) : 0;
 
-  let alimID = aciklamadanAlimID(aciklama);
+  let alimID = row.AlimID || aciklamadanAlimID(aciklama);
   if (!alimID && Array.isArray(tumIslemler)) {
     const unvan = aciklamadanTedarikciUnvan(aciklama);
     const rowT = row.Tarih ? new Date(row.Tarih).getTime() : 0;
@@ -3895,7 +3975,7 @@ async function gunlukMalAlimKalemleri(pool, row, tumIslemler = null) {
 
 /** Satış ana satırını kalem kalem düz satırlara böler (alt fatura tablosu yok). */
 function gunlukIslemSatisKalemSatirlarinaBol(islemler) {
-  const musterisiz = 'Müşterisiz işlem';
+  const musterisiz = PERAKENDE_ISLEM_ETIKET;
   const cikti = [];
   for (const r of islemler) {
     const satisAna =
@@ -4056,12 +4136,28 @@ function gunlukIslemSatirSiraDegeri(r) {
   return 50;
 }
 
+async function gunlukHizliSatisDetaylari(pool, kayitID) {
+  if (!Number.isInteger(kayitID) || kayitID < 1) return [];
+  try {
+    const dRs = await pool.request()
+      .input('KayitID', sql.Int, kayitID)
+      .query(`
+        SELECT StokID, UrunAdi, Miktar, BirimFiyat, SatirTutar
+        FROM HizliSatisKayitDetaylari WHERE KayitID = @KayitID ORDER BY DetayID
+      `);
+    return dRs.recordset || [];
+  } catch (err) {
+    console.warn('Hızlı satış detayları okunamadı:', err.message);
+    return [];
+  }
+}
+
 async function gunlukIslemFaturaDetaylariEkle(pool, islemler) {
   const hedef = islemler.filter(
     (r) =>
       ['mal_alim', 'musteri_satis', 'satis'].includes(r.Kaynak) &&
       r.SatirTur !== 'tahsilat' &&
-      r.LogID
+      (r.LogID || r.KayitID)
   );
   const CONC = 10;
   for (let i = 0; i < hedef.length; i += CONC) {
@@ -4071,8 +4167,16 @@ async function gunlukIslemFaturaDetaylariEkle(pool, islemler) {
         try {
           if (row.Kaynak === 'mal_alim') {
             row.detaylar = await gunlukMalAlimKalemleri(pool, row, islemler);
+          } else if (row.Kaynak === 'musteri_satis' && row.HareketID) {
+            const veri = await gunlukIslemDetayVerHareket(pool, Number(row.HareketID));
+            row.detaylar = veri?.detaylar || [];
+          } else if (row.Kaynak === 'satis' && row.KayitID) {
+            row.detaylar = await gunlukHizliSatisDetaylari(pool, Number(row.KayitID));
           } else {
-            const veri = await gunlukIslemDetayVer(pool, row.LogID);
+            const veri = await gunlukIslemDetayVer(pool, row.LogID, {
+              kaynak: row.Kaynak || '',
+              hareketID: row.HareketID ? Number(row.HareketID) : null,
+            });
             row.detaylar = veri?.detaylar || [];
           }
         } catch (err) {
@@ -4084,11 +4188,199 @@ async function gunlukIslemFaturaDetaylariEkle(pool, islemler) {
   }
 }
 
-async function gunlukIslemDetayVer(pool, logID) {
+/** Günlük listede LogID = HareketID olan müşteri cari satış/tahsilat detayı */
+async function gunlukIslemDetayVerHareket(pool, hareketID) {
+  const hRs = await pool.request()
+    .input('HareketID', sql.Int, hareketID)
+    .query(`
+      SELECT h.HareketID, h.MusteriID, h.Tur, h.ToplamTutar, h.OdenenTutar, h.KalanTutar,
+             h.OdemeSekli, h.Aciklama, h.Kullanici, h.Referans, h.Tarih,
+             m.AdSoyad, m.FirmaAdi, m.tur AS MusteriTur
+      FROM MusteriHareketleri h
+      LEFT JOIN Musteriler m ON m.MusteriID = h.MusteriID
+      WHERE h.HareketID = @HareketID
+    `);
+  if (!hRs.recordset.length) return null;
+  const h = hRs.recordset[0];
+  const tur = String(h.Tur || '').toLowerCase();
+
+  let islemTipi = 'Müşteri Hareket';
+  if (tur === 'satis') islemTipi = 'Müşteri Satış';
+  else if (tur === 'odeme') islemTipi = 'Müşteri Ödeme';
+  else if (tur === 'iade') islemTipi = 'Müşteri İade';
+  else if (tur === 'iadeodeme') islemTipi = 'Müşteri İade Ödeme';
+
+  const log = {
+    LogID: hareketID,
+    KullaniciAdi: h.Kullanici || '—',
+    IslemTipi: islemTipi,
+    Aciklama: h.Aciklama || '',
+    Tarih: h.Tarih,
+  };
+
+  let detaylar = [];
+  let sepetToplam = 0;
+  let tahsilatTutar = 0;
+  let odeme = h.OdemeSekli || 'Diğer';
+  const musteriID = h.MusteriID ? Number(h.MusteriID) : null;
+  let musteriAd = gunlukHareketMusteriAd(h);
+  if (musteriAd === 'Müşteri' && musteriID) musteriAd = null;
+
+  if (tur === 'satis' || tur === 'iade') {
+    const detRs = await pool.request()
+      .input('HareketID', sql.Int, hareketID)
+      .query(`
+        SELECT StokID, UrunAdi, Miktar, BirimFiyat, SatirTutar
+        FROM MusteriHareketDetaylari WHERE HareketID = @HareketID ORDER BY DetayID
+      `);
+    detaylar = detRs.recordset || [];
+    sepetToplam = Number(h.ToplamTutar || 0);
+    if (!sepetToplam && detaylar.length) {
+      sepetToplam = detaylar.reduce((s, d) => s + Number(d.SatirTutar || 0), 0);
+    }
+
+    if (tur === 'satis' && h.Referans) {
+      const tahRs = await pool.request()
+        .input('Ref', sql.NVarChar(40), h.Referans)
+        .query(`
+          SELECT OdenenTutar, OdemeSekli
+          FROM MusteriHareketleri
+          WHERE Tur = N'Odeme' AND Referans = @Ref
+        `);
+      for (const o of tahRs.recordset || []) {
+        tahsilatTutar += Number(o.OdenenTutar || 0);
+        if (o.OdemeSekli) odeme = o.OdemeSekli;
+      }
+      tahsilatTutar = Math.round(tahsilatTutar * 100) / 100;
+    }
+  } else if (tur === 'odeme' || tur === 'iadeodeme') {
+    tahsilatTutar = Number(h.OdenenTutar || 0);
+    sepetToplam = tahsilatTutar;
+    odeme = h.OdemeSekli || odeme;
+  }
+
+  let veresiyeTutar = Math.max(0, Number(h.KalanTutar || 0));
+  if (tur === 'satis' && veresiyeTutar <= 0 && sepetToplam > tahsilatTutar) {
+    veresiyeTutar = Math.round((sepetToplam - tahsilatTutar) * 100) / 100;
+  }
+  if (tur === 'satis' && tahsilatTutar <= 0 && veresiyeTutar > 0) odeme = 'Veresiye';
+
+  if (musteriID && !musteriAd) {
+    const mRs = await pool.request()
+      .input('MID', sql.Int, musteriID)
+      .query('SELECT AdSoyad, FirmaAdi, tur FROM Musteriler WHERE MusteriID = @MID');
+    const mRow = mRs.recordset[0];
+    if (mRow) musteriAd = musteriGorunenAdKayit(mRow);
+  }
+  if (!musteriAd) musteriAd = aciklamadanMusteriAdi(h.Aciklama);
+
+  return {
+    log,
+    odeme,
+    sepetToplam,
+    tahsilatTutar,
+    veresiyeTutar,
+    musteriID,
+    musteriAd,
+    tedarikciAd: null,
+    referans: h.Referans || null,
+    hareketID,
+    kayitID: null,
+    detaylar,
+    iptalEdildi: false,
+    iptalEdilebilir: false,
+    iptalYeri: 'cari',
+    musterili: !!(musteriID && musteriID > 0),
+    malAlim: false,
+  };
+}
+
+async function gunlukIslemDetayVerHskKayit(pool, kayit) {
+  const detaylar = await gunlukHizliSatisDetaylari(pool, kayit.KayitID);
+  const log = {
+    LogID: kayit.LogID || kayit.KayitID,
+    KullaniciAdi: kayit.Kullanici || '—',
+    IslemTipi: 'Hızlı Satış',
+    Aciklama: '',
+    Tarih: kayit.Tarih,
+  };
+  const odeme = kayit.OdemeSekli || 'Nakit';
+  const sepetToplam = Number(kayit.SepetToplam || 0);
+  let tahsilatTutar = Number(kayit.TahsilatTutar || 0);
+  if (odeme !== 'Veresiye' && tahsilatTutar <= 0 && sepetToplam > 0) tahsilatTutar = sepetToplam;
+  const iptalEdildi = !!(kayit.IptalEdildi);
+  const musterili = !!(kayit.MusteriID && Number(kayit.MusteriID) > 0);
+  const iptalEdilebilir = !iptalEdildi && !musterili && !!kayit.KayitID;
+  let veresiyeTutar = Math.max(0, Math.round((sepetToplam - tahsilatTutar) * 100) / 100);
+  if (odeme === 'Veresiye') veresiyeTutar = sepetToplam;
+
+  return {
+    log,
+    odeme,
+    sepetToplam,
+    tahsilatTutar,
+    veresiyeTutar,
+    musteriID: kayit.MusteriID || null,
+    musteriAd: musterili ? null : PERAKENDE_ISLEM_ETIKET,
+    tedarikciAd: null,
+    referans: kayit.Referans || null,
+    hareketID: null,
+    kayitID: kayit.KayitID,
+    detaylar,
+    iptalEdildi,
+    iptalEdilebilir,
+    duzenleEdilebilir: iptalEdilebilir,
+    iptalYeri: iptalEdilebilir ? 'gunluk' : 'yok',
+    musterili,
+    malAlim: false,
+  };
+}
+
+async function gunlukIslemDetayVerHskBul(pool, logID) {
+  if (!(await tabloVarMi(pool, 'HizliSatisKayitlari'))) return null;
+  try {
+    const kRs = await pool.request()
+      .input('ID', sql.Int, logID)
+      .query(`
+        SELECT TOP 1 * FROM HizliSatisKayitlari
+        WHERE LogID = @ID OR KayitID = @ID
+      `);
+    const kayit = kRs.recordset[0];
+    if (!kayit) return null;
+    return gunlukIslemDetayVerHskKayit(pool, kayit);
+  } catch (err) {
+    console.warn('Hızlı satış kaydı okunamadı:', err.message);
+    return null;
+  }
+}
+
+async function gunlukIslemDetayVer(pool, logID, opts = {}) {
+  const kaynak = String(opts.kaynak || '').trim();
+  let hareketID =
+    Number.isInteger(opts.hareketID) && opts.hareketID > 0 ? opts.hareketID : null;
+  const cariKaynaklar = [
+    'musteri_satis',
+    'musteri_tahsilat',
+    'musteri_odeme',
+    'musteri_iade',
+    'musteri_iade_odeme',
+  ];
+  if (cariKaynaklar.includes(kaynak)) {
+    const hid = hareketID || logID;
+    const hareketVeri = await gunlukIslemDetayVerHareket(pool, hid);
+    if (hareketVeri) return hareketVeri;
+  }
+
   const logRs = await pool.request()
     .input('LogID', sql.Int, logID)
     .query('SELECT LogID, KullaniciAdi, IslemTipi, Aciklama, Tarih FROM IslemGecmisi WHERE LogID = @LogID');
-  if (!logRs.recordset.length) return null;
+  if (!logRs.recordset.length) {
+    const hskVeri = await gunlukIslemDetayVerHskBul(pool, logID);
+    if (hskVeri) return hskVeri;
+    const hareketVeri = await gunlukIslemDetayVerHareket(pool, hareketID || logID);
+    if (hareketVeri) return hareketVeri;
+    return null;
+  }
   const log = logRs.recordset[0];
 
   let kayit = null;
@@ -4103,7 +4395,7 @@ async function gunlukIslemDetayVer(pool, logID) {
   let musteriID = kayit?.MusteriID || aciklamadanMusteriID(log.Aciklama);
   let musteriAd = null;
   let referans = kayit?.Referans || null;
-  let hareketID = null;
+  hareketID = null;
 
   if (kayit?.KayitID) {
     const dRs = await pool.request()
@@ -4287,6 +4579,7 @@ async function gunlukIslemDetayVer(pool, logID) {
     detaylar,
     iptalEdildi,
     iptalEdilebilir,
+    duzenleEdilebilir: iptalEdilebilir,
     iptalYeri,
     musterili,
     malAlim: tedarikciSatirMalAlimMi(log),
@@ -4502,6 +4795,8 @@ async function gunlukIslemMusteriAdlariniCoz(pool, islemler) {
   const idSet = new Set();
 
   for (const r of islemler) {
+    const midRow = Number(r.MusteriID);
+    if (Number.isInteger(midRow) && midRow > 0) idSet.add(midRow);
     const mid = aciklamadanMusteriID(r.Aciklama);
     if (mid) {
       idSet.add(mid);
@@ -4565,7 +4860,7 @@ async function gunlukIslemMusteriAdlariniCoz(pool, islemler) {
     }
   }
 
-  const musterisiz = 'Müşterisiz işlem';
+  const musterisiz = PERAKENDE_ISLEM_ETIKET;
 
   for (const r of islemler) {
     const kaynak = r.Kaynak || '';
@@ -4582,22 +4877,30 @@ async function gunlukIslemMusteriAdlariniCoz(pool, islemler) {
 
     if (!hizliVeyaCari) continue;
 
-    const mid = logToMusteri.get(Number(r.LogID)) || aciklamadanMusteriID(r.Aciklama) || null;
+    const mid =
+      (Number(r.MusteriID) > 0 ? Number(r.MusteriID) : null) ||
+      logToMusteri.get(Number(r.LogID)) ||
+      aciklamadanMusteriID(r.Aciklama) ||
+      null;
     let ad = mid && adMap.has(mid) ? adMap.get(mid) : null;
-    if (!ad && mid) ad = musterisiz;
+    const mevcutAd = mobilOnekKaldir(r.MusteriAd || '');
+    if (!ad && mevcutAd && !perakendeEtiketMi(mevcutAd)) ad = mevcutAd;
     if (!ad) ad = aciklamadanMusteriAdi(r.Aciklama);
     if (!ad && (kaynak === 'satis' || kaynak === 'satis_tahsilat')) ad = musterisiz;
+    if (!ad && kaynak === 'musteri_satis' && mevcutAd) ad = mevcutAd;
+
+    if (mid) r.MusteriID = mid;
 
     r.MusteriAd = mobilOnekKaldir(ad || musterisiz) || musterisiz;
 
     if (tahsilatSatir) {
-      r.KisaAciklama = ad && ad !== musterisiz ? `${mobilOnekKaldir(ad)} — tahsilat` : musterisiz;
+      r.KisaAciklama = ad && !perakendeEtiketMi(ad) ? `${mobilOnekKaldir(ad)} — tahsilat` : musterisiz;
       continue;
     }
 
     if (kaynak === 'musteri_satis') {
       const kalan = aciklamadanMusteriSatisKalan(r.Aciklama);
-      if (ad && ad !== musterisiz) {
+      if (ad && !perakendeEtiketMi(ad)) {
         r.KisaAciklama =
           kalan > 0.009 ? `${ad} — kalan ${kalan.toFixed(2)}₺` : ad;
       } else {
@@ -4607,7 +4910,7 @@ async function gunlukIslemMusteriAdlariniCoz(pool, islemler) {
     }
 
     if (kaynak === 'satis') {
-      r.KisaAciklama = ad && ad !== musterisiz ? ad : musterisiz;
+      r.KisaAciklama = ad && !perakendeEtiketMi(ad) ? ad : musterisiz;
     }
   }
 }
@@ -4972,6 +5275,254 @@ function musteriDevirHareketMi(h) {
   return /eski programdan devir bakiyesi/i.test(String(h?.Aciklama || ''));
 }
 
+/** Müşterili hızlı satış logu — cari listede zaten var, IslemGecmisi satırı atlanır. */
+function hizliSatisMusteriliLogMu(row) {
+  const mid = aciklamadanMusteriID(row?.Aciklama);
+  return Number.isInteger(mid) && mid > 0;
+}
+
+/** Tarih aralığında müşterili hızlı satış LogID seti (HizliSatisKayitlari). */
+async function gunlukMusteriliHizliSatisLogIdleri(pool, basTrim, bitTrim) {
+  const set = new Set();
+  if (!(await tabloVarMi(pool, 'HizliSatisKayitlari'))) return set;
+  try {
+    const rs = await pool.request()
+      .input('bas', sql.NVarChar(10), basTrim)
+      .input('bit', sql.NVarChar(10), bitTrim)
+      .query(`
+        SELECT DISTINCT k.LogID
+        FROM HizliSatisKayitlari k
+        INNER JOIN IslemGecmisi g ON g.LogID = k.LogID
+        WHERE k.MusteriID IS NOT NULL AND k.MusteriID > 0
+          AND ISNULL(k.IptalEdildi, 0) = 0
+          AND CAST(g.Tarih AS DATE) >= CAST(@bas AS DATE)
+          AND CAST(g.Tarih AS DATE) <= CAST(@bit AS DATE)
+      `);
+    for (const r of rs.recordset || []) {
+      const id = Number(r.LogID);
+      if (Number.isInteger(id) && id > 0) set.add(id);
+    }
+  } catch (err) {
+    console.warn('Müşterili hızlı satış logları okunamadı:', err.message);
+  }
+  return set;
+}
+
+async function gunlukTedarikAlimOdenenTutar(pool, alimID) {
+  if (!Number.isInteger(alimID) || alimID < 1) return 0;
+  try {
+    const rs = await pool.request()
+      .input('Bagli', sql.NVarChar(80), `Mal alım ödemesi (Alım #${alimID})%`)
+      .query(`SELECT ISNULL(SUM(Tutar), 0) AS Odenen FROM TedarikciOdeme WHERE Aciklama LIKE @Bagli`);
+    return Number(rs.recordset[0]?.Odenen || 0);
+  } catch (err) {
+    return 0;
+  }
+}
+
+function gunlukMalAlimAciklamaOlustur(unvan, alimID, toplam, odenen, odeme, kalan) {
+  let s = `Mal alım ${unvan} (Alım #${alimID}): ${toplam}₺, ödeme ${odenen}₺`;
+  if (odenen > 0 && odeme) s += ` [${odeme}]`;
+  s += `, kalan ${kalan}₺`;
+  return s;
+}
+
+/** Perakende hızlı satışlar — tek kaynak: HizliSatisKayitlari (IslemGecmisi değil). */
+async function gunlukPerakendeSatislariniEkle(pool, basTrim, bitTrim, ozet, islemler) {
+  if (!(await tabloVarMi(pool, 'HizliSatisKayitlari'))) return;
+  try {
+    const rs = await pool.request()
+      .input('bas', sql.NVarChar(10), basTrim)
+      .input('bit', sql.NVarChar(10), bitTrim)
+      .query(`
+        SELECT KayitID, LogID, OdemeSekli, SepetToplam, TahsilatTutar, Kullanici, Tarih, Referans
+        FROM HizliSatisKayitlari
+        WHERE ISNULL(IptalEdildi, 0) = 0
+          AND (MusteriID IS NULL OR MusteriID = 0)
+          AND CAST(Tarih AS DATE) >= CAST(@bas AS DATE)
+          AND CAST(Tarih AS DATE) <= CAST(@bit AS DATE)
+        ORDER BY Tarih DESC, KayitID DESC
+      `);
+    for (const k of rs.recordset || []) {
+      const toplam = Number(k.SepetToplam || 0);
+      let tahsilat = Number(k.TahsilatTutar || 0);
+      const odeme = String(k.OdemeSekli || 'Nakit').trim();
+      const veresiyeMi = odeme === 'Veresiye';
+      if (!veresiyeMi && tahsilat <= 0 && toplam > 0) tahsilat = toplam;
+      let kalan = Math.max(0, Math.round((toplam - tahsilat) * 100) / 100);
+      if (veresiyeMi) {
+        kalan = toplam;
+        tahsilat = 0;
+      }
+
+      ozet.toplam += toplam;
+      if (tahsilat > 0) gunlukOzetTahsilatEkle(ozet, odeme, tahsilat);
+      if (kalan > 0) ozet.veresiye += kalan;
+      ozet.islemAdedi += 1;
+
+      const grupLogID = k.LogID || k.KayitID;
+      const ortak = {
+        Tarih: k.Tarih,
+        KullaniciAdi: k.Kullanici || '',
+        IslemTipi: 'Hızlı Satış',
+        GrupLogID: grupLogID,
+        KayitID: k.KayitID,
+        MobilKaynak: hareketMobilMi({ Referans: k.Referans }),
+        MusteriAd: PERAKENDE_ISLEM_ETIKET,
+      };
+      islemler.push({
+        ...ortak,
+        LogID: grupLogID,
+        TurEtiket: 'Satış',
+        SatirTur: 'satis',
+        Odeme: veresiyeMi ? 'Veresiye' : '—',
+        Tutar: toplam,
+        KisaAciklama: PERAKENDE_ISLEM_ETIKET,
+        Aciklama: '',
+        Yon: 'giris',
+        Kaynak: 'satis',
+      });
+      if (!veresiyeMi && tahsilat > 0.009) {
+        islemler.push({
+          ...ortak,
+          LogID: grupLogID,
+          TurEtiket: 'Tahsilat',
+          SatirTur: 'tahsilat',
+          Odeme: odeme,
+          Tutar: tahsilat,
+          KisaAciklama: '',
+          Aciklama: '',
+          Yon: 'giris',
+          Kaynak: 'satis_tahsilat',
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('Günlük perakende satışları okunamadı:', err.message);
+  }
+}
+
+/** Tedarik mal alım ve ödemeler — tek kaynak: TedarikAlim + TedarikciOdeme (IslemGecmisi değil). */
+async function gunlukTedarikciIslemleriniEkle(pool, basTrim, bitTrim, ozet, islemler) {
+  if (await tabloVarMi(pool, 'TedarikAlim')) {
+    try {
+      const alimRs = await pool.request()
+        .input('bas', sql.NVarChar(10), basTrim)
+        .input('bit', sql.NVarChar(10), bitTrim)
+        .query(`
+          SELECT a.AlimID, a.Tarih, a.ToplamTutar, a.OdemeSekli, a.Kullanici, t.Unvan
+          FROM TedarikAlim a
+          INNER JOIN Tedarikciler t ON t.TedarikciID = a.TedarikciID
+          WHERE CAST(a.Tarih AS DATE) >= CAST(@bas AS DATE)
+            AND CAST(a.Tarih AS DATE) <= CAST(@bit AS DATE)
+          ORDER BY a.Tarih DESC, a.AlimID DESC
+        `);
+      for (const a of alimRs.recordset || []) {
+        const alimID = a.AlimID;
+        const toplam = Number(a.ToplamTutar || 0);
+        const odenen = await gunlukTedarikAlimOdenenTutar(pool, alimID);
+        const kalan = Math.max(0, Math.round((toplam - odenen) * 100) / 100);
+        let odeme = String(a.OdemeSekli || 'Nakit').trim();
+        if (odenen <= 0 && kalan > 0) odeme = 'Veresiye';
+        const unvan = String(a.Unvan || '').trim() || 'Tedarikçi';
+        const malParse = { toplam, odeme: odenen, kalan };
+        const kasaCikis = tedarikMalAlimKasaTutari(malParse);
+        const veresiyeKisim =
+          malParse.kalan > 0 ? malParse.kalan : kasaCikis <= 0 ? malParse.toplam : 0;
+        const tutar = kasaCikis > 0 ? kasaCikis : veresiyeKisim;
+
+        if (kasaCikis > 0) {
+          if (odeme === 'Nakit') ozet.giderNakit += kasaCikis;
+          else if (odeme === 'Kart') ozet.giderKart += kasaCikis;
+          else if (odeme === 'Havale') ozet.giderHavale += kasaCikis;
+          else ozet.giderDiger += kasaCikis;
+          if (odeme === 'Nakit' || odeme === 'Kart' || odeme === 'Havale') {
+            ozet.giderKasaToplam += kasaCikis;
+            ozet.giderTedarikciKasa += kasaCikis;
+          }
+        }
+        if (veresiyeKisim > 0) ozet.malAlimVeresiye += veresiyeKisim;
+        ozet.islemAdedi += 1;
+
+        const aciklama = gunlukMalAlimAciklamaOlustur(unvan, alimID, toplam, odenen, odeme, kalan);
+        islemler.push({
+          LogID: alimID,
+          GrupLogID: alimID,
+          AlimID: alimID,
+          Tarih: a.Tarih,
+          KullaniciAdi: a.Kullanici || '',
+          IslemTipi: 'Tedarik Mal Alım',
+          SatirTur: 'mal_alim',
+          TurEtiket: 'Mal alım',
+          Odeme: odeme,
+          Tutar: tutar,
+          AlimToplam: toplam,
+          Aciklama: aciklama,
+          MusteriAd: unvan,
+          KisaAciklama: unvan,
+          Yon: 'cikis',
+          Kaynak: 'mal_alim',
+          MobilKaynak: false,
+        });
+      }
+    } catch (err) {
+      console.warn('Günlük tedarik alımları okunamadı:', err.message);
+    }
+  }
+
+  if (await tabloVarMi(pool, 'TedarikciOdeme')) {
+    try {
+      const odRs = await pool.request()
+        .input('bas', sql.NVarChar(10), basTrim)
+        .input('bit', sql.NVarChar(10), bitTrim)
+        .query(`
+          SELECT o.OdemeID, o.Tutar, o.OdemeSekli, o.Kullanici, o.Aciklama, o.Tarih, t.Unvan
+          FROM TedarikciOdeme o
+          INNER JOIN Tedarikciler t ON t.TedarikciID = o.TedarikciID
+          WHERE CAST(o.Tarih AS DATE) >= CAST(@bas AS DATE)
+            AND CAST(o.Tarih AS DATE) <= CAST(@bit AS DATE)
+            AND ISNULL(o.Aciklama, N'') NOT LIKE N'Mal alım ödemesi%'
+          ORDER BY o.Tarih DESC, o.OdemeID DESC
+        `);
+      for (const o of odRs.recordset || []) {
+        const tutar = Number(o.Tutar || 0);
+        if (tutar <= 0) continue;
+        const odeme = String(o.OdemeSekli || 'Nakit').trim();
+        if (odeme === 'Nakit') ozet.giderNakit += tutar;
+        else if (odeme === 'Kart') ozet.giderKart += tutar;
+        else if (odeme === 'Havale') ozet.giderHavale += tutar;
+        else ozet.giderDiger += tutar;
+        if (odeme === 'Nakit' || odeme === 'Kart' || odeme === 'Havale') {
+          ozet.giderKasaToplam += tutar;
+          ozet.giderTedarikciKasa += tutar;
+        }
+        const unvan = String(o.Unvan || '').trim() || 'Tedarikçi';
+        ozet.islemAdedi += 1;
+        const aciklama = o.Aciklama || `${unvan}: ${tutar}₺ (${odeme})`;
+        islemler.push({
+          LogID: o.OdemeID,
+          GrupLogID: o.OdemeID,
+          Tarih: o.Tarih,
+          KullaniciAdi: o.Kullanici || '',
+          IslemTipi: 'Tedarikçi Ödeme',
+          SatirTur: '',
+          TurEtiket: `Tedarikçi ödeme (${odeme})`,
+          Odeme: odeme,
+          Tutar: tutar,
+          Aciklama: aciklama,
+          MusteriAd: unvan,
+          KisaAciklama: unvan,
+          Yon: 'cikis',
+          Kaynak: 'tedarikci_odeme',
+          MobilKaynak: false,
+        });
+      }
+    } catch (err) {
+      console.warn('Günlük tedarik ödemeleri okunamadı:', err.message);
+    }
+  }
+}
+
 /** Günlük müşteri satış/tahsilat/iade — tek kaynak: MusteriHareketleri (cari silinince otomatik düşer). */
 async function gunlukMusteriCariHareketleriniEkle(pool, basTrim, bitTrim, ozet, islemler) {
   const rs = await pool.request()
@@ -5155,9 +5706,8 @@ async function gunlukMusteriCariHareketleriniEkle(pool, basTrim, bitTrim, ozet, 
 }
 
 /**
- * Hızlı satış loglarından ödeme tipine göre özet ve satır listesi.
- * Tarih: ISO yyyy-mm-dd string ile (timezone kayması olmadan) karşılaştırılır.
- * Müşteri satış/tahsilat/iade: MusteriHareketleri (IslemGecmisi değil).
+ * Günlük işlem listesi — IslemGecmisi kullanılmaz.
+ * Kaynaklar: HizliSatisKayitlari, MusteriHareketleri, TedarikAlim, TedarikciOdeme, GenelGider.
  */
 async function gunlukIslemDetay(pool, basStr, bitStr) {
   const basTrim = String(basStr || '').trim().substring(0, 10);
@@ -5166,23 +5716,6 @@ async function gunlukIslemDetay(pool, basStr, bitStr) {
   if (!ymdOk.test(basTrim) || !ymdOk.test(bitTrim) || basTrim > bitTrim) {
     return bosGunlukSonuc();
   }
-
-  const req = pool.request();
-  req.input('bas', sql.NVarChar(10), basTrim);
-  req.input('bit', sql.NVarChar(10), bitTrim);
-  const result = await req.query(`
-    SELECT TOP 8000 LogID, KullaniciAdi, IslemTipi, Aciklama, Tarih
-    FROM IslemGecmisi
-    WHERE CAST(Tarih AS DATE) >= CAST(@bas AS DATE)
-      AND CAST(Tarih AS DATE) <= CAST(@bit AS DATE)
-    ORDER BY Tarih DESC
-  `);
-
-  const tum = result.recordset || [];
-  const iptalLogIds = await gunlukIptalEdilmisLogIdleri(pool, basTrim, bitTrim);
-  const logIptalDegil = (r) => !iptalLogIds.has(Number(r.LogID));
-  const satisSatirlari = tum.filter((r) => hizliSatisLogMu(r) && logIptalDegil(r));
-  const tedarikciSatirlari = tum.filter((r) => tedarikciGunlukLogMu(r));
 
   const ozet = {
     nakit: 0,
@@ -5205,186 +5738,13 @@ async function gunlukIslemDetay(pool, basStr, bitStr) {
 
   const islemler = [];
 
-  for (const row of satisSatirlari) {
-    const toplam = aciklamadanHizliSatisToplam(row.Aciklama);
-    let tahsilat = aciklamadanHizliSatisTahsilat(row.Aciklama);
-    let odeme = aciklamadanOdeme(row.Aciklama);
-    if (!odeme || odeme === 'Diğer') {
-      const p = String(row.Aciklama || '').match(/\(([^)]+)\)\s*$/);
-      if (p) {
-        const et = p[1];
-        if (/veresiye/i.test(et)) odeme = 'Veresiye';
-        else if (/Nakit/i.test(et)) odeme = 'Nakit';
-        else if (/Kart/i.test(et)) odeme = 'Kart';
-        else if (/Havale/i.test(et)) odeme = 'Havale';
-      }
-    }
-    const veresiyeMi = odeme === 'Veresiye';
-    if (!veresiyeMi && tahsilat <= 0 && toplam > 0) tahsilat = toplam;
-    let kalan = Math.max(0, Math.round((toplam - tahsilat) * 100) / 100);
-    if (veresiyeMi) {
-      kalan = toplam;
-      tahsilat = 0;
-    }
-
-    ozet.toplam += toplam;
-    if (tahsilat > 0) {
-      if (odeme === 'Nakit') ozet.nakit += tahsilat;
-      else if (odeme === 'Kart') ozet.kart += tahsilat;
-      else if (odeme === 'Havale') ozet.havale += tahsilat;
-      else ozet.diger += tahsilat;
-    }
-    if (kalan > 0) ozet.veresiye += kalan;
-
-    ozet.islemAdedi += 1;
-    const grupLogID = row.LogID;
-    const ortak = {
-      Tarih: row.Tarih,
-      KullaniciAdi: row.KullaniciAdi,
-      IslemTipi: row.IslemTipi,
-      GrupLogID: grupLogID,
-      MobilKaynak: logMobilMi(row),
-    };
-    islemler.push({
-      ...ortak,
-      LogID: row.LogID,
-      TurEtiket: 'Satış',
-      SatirTur: 'satis',
-      Odeme: veresiyeMi ? 'Veresiye' : '—',
-      Tutar: toplam,
-      KisaAciklama: '',
-      Aciklama: row.Aciklama,
-      Yon: 'giris',
-      Kaynak: 'satis',
-    });
-    if (!veresiyeMi && tahsilat > 0.009) {
-      islemler.push({
-        ...ortak,
-        LogID: row.LogID,
-        TurEtiket: 'Tahsilat',
-        SatirTur: 'tahsilat',
-        Odeme: odeme,
-        Tutar: tahsilat,
-        KisaAciklama: '',
-        Aciklama: row.Aciklama,
-        Yon: 'giris',
-        Kaynak: 'satis_tahsilat',
-      });
-    }
-  }
-
+  await gunlukPerakendeSatislariniEkle(pool, basTrim, bitTrim, ozet, islemler);
   await gunlukMusteriCariHareketleriniEkle(pool, basTrim, bitTrim, ozet, islemler);
 
   ozet.kasaGiris = ozet.nakit + ozet.kart + ozet.havale;
 
-  for (const row of tedarikciSatirlari) {
-    const malAlim = tedarikciSatirMalAlimMi(row);
-    const malParse = malAlim ? aciklamadanTedarikMalAlim(row.Aciklama) : null;
-    let tutar = aciklamadanTutar(row.Aciklama);
-    let odeme = aciklamadanOdeme(row.Aciklama);
-    let alimToplam = null;
-    let turEtiket = null;
-
-    if (malAlim && malParse) {
-      alimToplam = malParse.toplam;
-      const kasaCikis = tedarikMalAlimKasaTutari(malParse);
-      const veresiyeKisim =
-        malParse.kalan > 0 ? malParse.kalan : kasaCikis <= 0 ? malParse.toplam : 0;
-      tutar = kasaCikis > 0 ? kasaCikis : veresiyeKisim;
-      if (kasaCikis <= 0 && veresiyeKisim > 0) odeme = 'Veresiye';
-      if (kasaCikis > 0) {
-        if (odeme === 'Nakit') ozet.giderNakit += kasaCikis;
-        else if (odeme === 'Kart') ozet.giderKart += kasaCikis;
-        else if (odeme === 'Havale') ozet.giderHavale += kasaCikis;
-        else ozet.giderDiger += kasaCikis;
-        if (odeme === 'Nakit' || odeme === 'Kart' || odeme === 'Havale') {
-          ozet.giderKasaToplam += kasaCikis;
-          ozet.giderTedarikciKasa += kasaCikis;
-        }
-      }
-      if (veresiyeKisim > 0) ozet.malAlimVeresiye += veresiyeKisim;
-      turEtiket = 'Mal alım';
-    } else if (malAlim) {
-      if (odeme === 'Veresiye') ozet.malAlimVeresiye += tutar;
-      else {
-        if (odeme === 'Nakit') ozet.giderNakit += tutar;
-        else if (odeme === 'Kart') ozet.giderKart += tutar;
-        else if (odeme === 'Havale') ozet.giderHavale += tutar;
-        else ozet.giderDiger += tutar;
-        if (odeme === 'Nakit' || odeme === 'Kart' || odeme === 'Havale') {
-          ozet.giderKasaToplam += tutar;
-          ozet.giderTedarikciKasa += tutar;
-        }
-      }
-      turEtiket = 'Mal alım';
-    } else {
-      if (odeme === 'Nakit') ozet.giderNakit += tutar;
-      else if (odeme === 'Kart') ozet.giderKart += tutar;
-      else if (odeme === 'Havale') ozet.giderHavale += tutar;
-      else ozet.giderDiger += tutar;
-      if (odeme === 'Nakit' || odeme === 'Kart' || odeme === 'Havale') {
-        ozet.giderKasaToplam += tutar;
-        ozet.giderTedarikciKasa += tutar;
-      }
-      turEtiket = `Tedarikçi ödeme (${odeme})`;
-    }
-
-    const tedarikciUnvan = malAlim ? aciklamadanTedarikciUnvan(row.Aciklama) : null;
-    ozet.islemAdedi += 1;
-    islemler.push({
-      LogID: row.LogID,
-      GrupLogID: row.LogID,
-      Tarih: row.Tarih,
-      KullaniciAdi: row.KullaniciAdi,
-      IslemTipi: row.IslemTipi,
-      SatirTur: malAlim ? 'mal_alim' : '',
-      TurEtiket: turEtiket,
-      Odeme: odeme,
-      Tutar: tutar,
-      AlimToplam: alimToplam,
-      Aciklama: row.Aciklama,
-      MusteriAd: tedarikciUnvan,
-      KisaAciklama: tedarikciUnvan,
-      Yon: 'cikis',
-      Kaynak: malAlim ? 'mal_alim' : 'tedarikci_odeme',
-      MobilKaynak: logMobilMi(row),
-    });
-  }
-
+  await gunlukTedarikciIslemleriniEkle(pool, basTrim, bitTrim, ozet, islemler);
   await gunlukGenelGiderleriniEkle(pool, basTrim, bitTrim, ozet, islemler);
-
-  if (satisSatirlari.length === 0) {
-    const kasaSatirlari = await kasadanGunlukOkuma(pool, basTrim, bitTrim);
-    if (kasaSatirlari && kasaSatirlari.length > 0) {
-      for (const row of kasaSatirlari) {
-        if (kasaGunlukAtlanacakMi(row.Aciklama)) continue;
-        let tutar = Number(row.Tutar);
-        if (!Number.isFinite(tutar) || tutar <= 0) tutar = aciklamadanTutar(row.Aciklama);
-        const odeme = aciklamadanOdeme(row.Aciklama);
-        if (odeme === 'Nakit') ozet.nakit += tutar;
-        else if (odeme === 'Kart') ozet.kart += tutar;
-        else if (odeme === 'Havale') ozet.havale += tutar;
-        else if (odeme === 'Veresiye') ozet.veresiye += tutar;
-        else ozet.diger += tutar;
-        ozet.toplam += tutar;
-        ozet.islemAdedi += 1;
-        islemler.push({
-          LogID: row.KasaID,
-          Tarih: row.Tarih,
-          KullaniciAdi: row.Kullanici,
-          IslemTipi: 'Kasa girişi',
-          TurEtiket: gunlukSatisVeOdemeTur(odeme),
-          Odeme: odeme,
-          Tutar: tutar,
-          Aciklama: row.Aciklama,
-          Yon: 'giris',
-          Kaynak: 'kasa',
-          MobilKaynak: /\[Mobil\]/i.test(String(row.Aciklama || '')),
-        });
-      }
-      ozet.kasaGiris = ozet.nakit + ozet.kart + ozet.havale;
-    }
-  }
 
   await gunlukIslemMusteriAdlariniCoz(pool, islemler);
   await gunlukIslemFaturaDetaylariEkle(pool, islemler);
@@ -5403,9 +5763,7 @@ async function gunlukIslemDetay(pool, basStr, bitStr) {
     return 0;
   });
 
-  const islemlerGoster = genisletilmis.filter(
-    (r) => !gunlukLogIptalMi(r, iptalLogIds) && !gunlukListedeGizlenecekSatirMi(r),
-  );
+  const islemlerGoster = genisletilmis.filter((r) => !gunlukListedeGizlenecekSatirMi(r));
 
   return { ozet, islemler: islemlerGoster };
 }
@@ -5441,7 +5799,12 @@ app.get('/api/gunluk-islem/:logID/detay', async (req, res) => {
     }
     const pool = await poolPromise;
     await ensureHizliSatisKayitTablosu(pool);
-    const veri = await gunlukIslemDetayVer(pool, logID);
+    const kaynak = String(req.query.kaynak || '').trim();
+    const hareketID = parseInt(req.query.hareketID, 10);
+    const veri = await gunlukIslemDetayVer(pool, logID, {
+      kaynak,
+      hareketID: Number.isInteger(hareketID) && hareketID > 0 ? hareketID : null,
+    });
     if (!veri) return res.status(404).json({ message: 'İşlem bulunamadı.' });
     res.json(veri);
   } catch (err) {
@@ -5524,6 +5887,138 @@ app.post('/api/gunluk-islem/:logID/iptal', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: 'İptal sırasında hata oluştu.' });
+  }
+});
+
+app.post('/api/gunluk-islem/:logID/duzenle', async (req, res) => {
+  try {
+    const logID = parseInt(req.params.logID, 10);
+    const { kullaniciAdi, sifre, kullanici, kalemler, odemeTipi, tahsilatTutar } = req.body || {};
+    if (!Number.isInteger(logID) || logID < 1) {
+      return res.status(400).json({ success: false, message: 'Geçersiz işlem.' });
+    }
+    if (!Array.isArray(kalemler) || kalemler.length === 0) {
+      return res.status(400).json({ success: false, message: 'Sepet boş.' });
+    }
+    if (kalemler.length > 100) {
+      return res.status(400).json({ success: false, message: 'Çok fazla satır.' });
+    }
+
+    const odemeRaw = (odemeTipi || 'Nakit').trim();
+    const odemeIzinli = ['Nakit', 'Kart', 'Havale'];
+    if (!odemeIzinli.includes(odemeRaw)) {
+      return res.status(400).json({ success: false, message: 'Perakende düzenlemede yalnızca Nakit, Kart veya Havale kullanılabilir.' });
+    }
+
+    const pool = await poolPromise;
+    await ensureHizliSatisKayitTablosu(pool);
+
+    const sifreSonuc = await kullaniciSifreDogrula(pool, kullaniciAdi, sifre);
+    if (!sifreSonuc.ok) {
+      return res.status(401).json({ success: false, message: sifreSonuc.message });
+    }
+
+    const veri = await gunlukIslemDetayVer(pool, logID);
+    if (!veri) return res.status(404).json({ success: false, message: 'İşlem bulunamadı.' });
+    if (!veri.duzenleEdilebilir) {
+      return res.status(400).json({ success: false, message: 'Bu perakende satış düzenlenemez (eski kayıt veya müşterili satış).' });
+    }
+    if (veri.iptalEdildi) {
+      return res.status(400).json({ success: false, message: 'İptal edilmiş satış düzenlenemez.' });
+    }
+
+    const birlestir = new Map();
+    for (const k of kalemler) {
+      const id = parseInt(k.urunID ?? k.stokID, 10);
+      const m = parseInt(k.miktar, 10);
+      if (!id || !Number.isInteger(m) || m < 1) {
+        return res.status(400).json({ success: false, message: 'Geçersiz sepet satırı.' });
+      }
+      let birimFiyat = null;
+      if (k.birimFiyat != null && k.birimFiyat !== '') {
+        birimFiyat = Math.round(Number(k.birimFiyat) * 100) / 100;
+        if (!Number.isFinite(birimFiyat) || birimFiyat < 0) {
+          return res.status(400).json({ success: false, message: 'Geçersiz birim fiyat.' });
+        }
+      }
+      const prev = birlestir.get(id);
+      if (prev) {
+        if (birimFiyat != null && prev.birimFiyat != null && birimFiyat !== prev.birimFiyat) {
+          return res.status(400).json({ success: false, message: 'Aynı ürün için tutarsız birim fiyat.' });
+        }
+        prev.miktar += m;
+        if (birimFiyat != null) prev.birimFiyat = birimFiyat;
+      } else {
+        birlestir.set(id, { miktar: m, birimFiyat });
+      }
+    }
+
+    const satirlar = [];
+    let genelToplam = 0;
+    for (const [stokID, entry] of birlestir) {
+      const miktar = entry.miktar;
+      const stokRs = await pool.request()
+        .input('ID', sql.Int, stokID)
+        .query('SELECT StokID, UrunAdi, MevcutMiktar, SatisFiyati FROM Stok WHERE StokID = @ID');
+      if (stokRs.recordset.length === 0) {
+        return res.status(404).json({ success: false, message: `Ürün bulunamadı (ID: ${stokID}).` });
+      }
+      const row = stokRs.recordset[0];
+      const birim =
+        entry.birimFiyat != null && Number.isFinite(entry.birimFiyat)
+          ? entry.birimFiyat
+          : Number(row.SatisFiyati);
+      const satirTutar = Math.round(miktar * birim * 100) / 100;
+      genelToplam += satirTutar;
+      satirlar.push({
+        stokID,
+        miktar,
+        urunAdi: row.UrunAdi,
+        birimFiyat: birim,
+        satirTutar,
+      });
+    }
+    genelToplam = Math.round(genelToplam * 100) / 100;
+
+    let kasaTutar = genelToplam;
+    if (tahsilatTutar != null && tahsilatTutar !== '') {
+      kasaTutar = Math.round(Number(tahsilatTutar) * 100) / 100;
+      if (!Number.isFinite(kasaTutar) || kasaTutar < 0) {
+        return res.status(400).json({ success: false, message: 'Geçersiz tahsilat tutarı.' });
+      }
+    }
+    if (kasaTutar > genelToplam) {
+      return res.status(400).json({ success: false, message: 'Tahsilat tutarı sepet toplamını geçemez.' });
+    }
+
+    const kRs = await pool.request()
+      .input('KayitID', sql.Int, veri.kayitID)
+      .query('SELECT TOP 1 * FROM HizliSatisKayitlari WHERE KayitID = @KayitID');
+    const kayit = kRs.recordset[0];
+    if (!kayit) return res.status(404).json({ success: false, message: 'Satış kaydı bulunamadı.' });
+
+    const kullaniciEtiket = String(kullanici || kullaniciAdi || 'Sistem').substring(0, 50);
+    const sonuc = await hizliSatisKayitGuncelle(pool, kayit, veri.log, {
+      satirlar,
+      genelToplam,
+      kasaTutar,
+      odemeRaw,
+      kullanici: kullaniciEtiket,
+    });
+    if (!sonuc.success) {
+      return res.status(sonuc.status || 400).json({ success: false, message: sonuc.message });
+    }
+
+    await islemKaydet(
+      kullaniciEtiket,
+      'Hızlı Satış Düzenleme',
+      `Log #${logID} düzenlendi — ${genelToplam}₺ [${odemeRaw}]`.substring(0, 500),
+    );
+
+    res.json({ success: true, message: sonuc.message || 'Perakende satış güncellendi.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Düzenleme sırasında hata oluştu.' });
   }
 });
 
