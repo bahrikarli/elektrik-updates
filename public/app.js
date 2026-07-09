@@ -1,5 +1,8 @@
 let stokDuzenlemeID = null;
 let stokListeCache = [];
+let stokListeFiltreleTimer = null;
+let stokListeFiltreleRaf = 0;
+const STOK_LISTE_GOSTER_LIMIT = 200;
 
 /** Piyasa referans paneli: true yap + index.html #stokPiyasaPanel d-none kaldır */
 const STOK_PIYASA_PANEL_AKTIF = false;
@@ -53,7 +56,7 @@ function stokToplamUrunSayisi() {
   return (stokListeCache || []).length;
 }
 
-function stokOzetPanelleriniGuncelle(listelenenAdet) {
+function stokOzetPanelleriniGuncelle(listelenenAdet, sinirli) {
   const toplam = stokToplamUrunSayisi();
   const st = document.getElementById('kutuStok');
   if (st) st.textContent = String(toplam);
@@ -63,10 +66,14 @@ function stokOzetPanelleriniGuncelle(listelenenAdet) {
   const gosterilen = Number.isFinite(listelenenAdet) ? listelenenAdet : toplam;
   const n = String(toplam);
   if (ara && gosterilen !== toplam) {
-    metin.innerHTML = `Toplam <strong class="text-dark">${n}</strong> ürün bulunmaktadır (${gosterilen} listeleniyor).`;
-  } else {
-    metin.innerHTML = `Toplam <strong class="text-dark">${n}</strong> ürün bulunmaktadır.`;
+    metin.innerHTML = `<strong class="text-dark">${gosterilen}</strong> eşleşme (${n} ürün içinde)${sinirli ? ` — ilk ${STOK_LISTE_GOSTER_LIMIT} gösteriliyor` : ''}`;
+    return;
   }
+  if (sinirli) {
+    metin.innerHTML = `Toplam <strong class="text-dark">${n}</strong> ürün — ilk <strong class="text-dark">${STOK_LISTE_GOSTER_LIMIT}</strong> gösteriliyor, arama ile daraltın.`;
+    return;
+  }
+  metin.innerHTML = `Toplam <strong class="text-dark">${n}</strong> ürün bulunmaktadır.`;
 }
 
 async function stoklariGetir() {
@@ -74,11 +81,83 @@ async function stoklariGetir() {
     const response = await fetch('/api/stok');
     const stoklar = await response.json();
     stokListeCache = Array.isArray(stoklar) ? stoklar : [];
+    stokAramaIndeksiniGuncelle();
     stokListeFiltrele(document.getElementById('stokAraInput')?.value || '');
     stokOzetPanelleriniGuncelle();
   } catch (hata) {
     console.error('Stoklar çekilirken hata:', hata);
   }
+}
+
+function stokAramaMetniOlustur(urun) {
+  return [
+    String(urun?.UrunAdi || '').toLocaleLowerCase('tr-TR'),
+    String(urun?.Kategori || '').toLocaleLowerCase('tr-TR'),
+    String(urun?.Barkod || '').trim(),
+  ].join(' ');
+}
+
+function stokAramaIndeksiniGuncelle() {
+  for (const u of stokListeCache) {
+    u.__ara = stokAramaMetniOlustur(u);
+  }
+}
+
+function stokAramaIndeksiniGuncelleTek(urun) {
+  if (urun) urun.__ara = stokAramaMetniOlustur(urun);
+}
+
+function stokAraEsles(urun, q) {
+  const raw = String(q ?? '').trim();
+  if (!raw) return true;
+  const ara = raw.toLocaleLowerCase('tr-TR');
+  if (urun?.__ara) return urun.__ara.includes(ara);
+  return stokMetinAramaEslesir(urun, raw);
+}
+
+function stokTabloSatirHtml(urun) {
+  return `<tr>
+        <td class="text-muted" style="font-size:0.8rem;">${urun.Barkod || '-'}</td>
+        <td class="fw-semibold">${urun.UrunAdi}</td>
+        <td class="text-muted">${urun.Kategori || '-'}</td>
+        <td class="text-end">${urun.AlisFiyati ? Number(urun.AlisFiyati).toFixed(2) + ' ₺' : '-'}</td>
+        <td class="text-end fw-semibold text-success">${Number(urun.SatisFiyati || 0).toFixed(2)} ₺</td>
+        <td class="text-center"><span class="badge bg-secondary bg-opacity-75">${urun.MevcutMiktar} ${urun.Birim}</span> ${stokSeviyeMetni(urun)}</td>
+        <td class="text-end text-nowrap">
+          <button type="button" class="btn btn-sm btn-light border" onclick="stokDuzenleModalAc(${urun.StokID})" title="Düzenle"><i class="fa-solid fa-pen text-primary"></i></button>
+          <button type="button" class="btn btn-sm btn-light border ms-1" onclick="stokSil(${urun.StokID})" title="Sil"><i class="fa-solid fa-trash text-danger"></i></button>
+        </td>
+      </tr>`;
+}
+
+function stokListeFiltreleHemen(q) {
+  const tb = document.getElementById('stokTabloGovdesi');
+  if (!tb) return;
+  const ara = String(q || '').trim();
+  let rows = stokListeCache || [];
+  if (ara) rows = rows.filter((u) => stokAraEsles(u, ara));
+  const toplam = rows.length;
+  const sinirli = !!ara && toplam > STOK_LISTE_GOSTER_LIMIT;
+  if (sinirli) rows = rows.slice(0, STOK_LISTE_GOSTER_LIMIT);
+  stokOzetPanelleriniGuncelle(toplam, sinirli);
+  if (!toplam) {
+    tb.innerHTML = '<tr><td colspan="7" class="text-center text-muted p-4">Kayıt bulunamadı.</td></tr>';
+    return;
+  }
+  tb.innerHTML = rows.map(stokTabloSatirHtml).join('');
+}
+
+function stokListeFiltrele(q) {
+  if (stokListeFiltreleRaf) cancelAnimationFrame(stokListeFiltreleRaf);
+  stokListeFiltreleRaf = requestAnimationFrame(() => {
+    stokListeFiltreleRaf = 0;
+    stokListeFiltreleHemen(q);
+  });
+}
+
+function stokListeFiltreleGecikmeli(q) {
+  if (stokListeFiltreleTimer) clearTimeout(stokListeFiltreleTimer);
+  stokListeFiltreleTimer = setTimeout(() => stokListeFiltrele(q), 90);
 }
 
 function stokSeviyeMetni(urun) {
@@ -415,37 +494,6 @@ async function stokBarkodEtiketYazdir() {
   }
 }
 
-function stokListeFiltrele(q) {
-  const tb = document.getElementById('stokTabloGovdesi');
-  if (!tb) return;
-  const ara = String(q || '').trim().toLocaleLowerCase('tr-TR');
-  const rows = (stokListeCache || []).filter((u) => {
-    if (!ara) return true;
-    return stokMetinAramaEslesir(u, q);
-  });
-  tb.innerHTML = '';
-  stokOzetPanelleriniGuncelle(rows.length);
-  if (!rows.length) {
-    tb.innerHTML = '<tr><td colspan="7" class="text-center text-muted p-4">Kayıt bulunamadı.</td></tr>';
-    return;
-  }
-  rows.forEach((urun) => {
-    tb.innerHTML += `
-      <tr>
-        <td class="text-muted" style="font-size:0.8rem;">${urun.Barkod || '-'}</td>
-        <td class="fw-semibold">${urun.UrunAdi}</td>
-        <td class="text-muted">${urun.Kategori || '-'}</td>
-        <td class="text-end">${urun.AlisFiyati ? Number(urun.AlisFiyati).toFixed(2) + ' ₺' : '-'}</td>
-        <td class="text-end fw-semibold text-success">${Number(urun.SatisFiyati || 0).toFixed(2)} ₺</td>
-        <td class="text-center"><span class="badge bg-secondary bg-opacity-75">${urun.MevcutMiktar} ${urun.Birim}</span> ${stokSeviyeMetni(urun)}</td>
-        <td class="text-end text-nowrap">
-          <button type="button" class="btn btn-sm btn-light border" onclick="stokDuzenleModalAc(${urun.StokID})" title="Düzenle"><i class="fa-solid fa-pen text-primary"></i></button>
-          <button type="button" class="btn btn-sm btn-light border ms-1" onclick="stokSil(${urun.StokID})" title="Sil"><i class="fa-solid fa-trash text-danger"></i></button>
-        </td>
-      </tr>`;
-  });
-}
-
 let stokListeModalGeriAc = false;
 
 function stokEkleModalGirdileriSerbest(modalEl) {
@@ -684,6 +732,9 @@ async function stokKaydet(event) {
     });
 
     if (response.ok) {
+      const duzenlemeSon = duzenleme;
+      const kaydedilenId = duzenlemeSon ? stokDuzenlemeID : null;
+      let yeniKayit = null;
       stokDuzenlemeID = null;
       document.getElementById('stokEkleForm').reset();
       const bilgi = document.getElementById('stokPiyasaBilgi');
@@ -696,9 +747,30 @@ async function stokKaydet(event) {
         };
         musteriSatisStokEkleDonus = false;
       }
+
+      if (duzenlemeSon) {
+        const hedefIdx = stokListeCache.findIndex((s) => Number(s.StokID) === Number(kaydedilenId));
+        if (hedefIdx >= 0) {
+          Object.assign(stokListeCache[hedefIdx], yeniUrun, { StokID: kaydedilenId });
+          stokAramaIndeksiniGuncelleTek(stokListeCache[hedefIdx]);
+        }
+      } else {
+        try {
+          yeniKayit = await response.json();
+        } catch (_) {
+          yeniKayit = null;
+        }
+        if (yeniKayit && yeniKayit.StokID) {
+          stokListeCache.unshift(yeniKayit);
+          stokAramaIndeksiniGuncelleTek(yeniKayit);
+        }
+      }
+      stokListeFiltreleHemen(document.getElementById('stokAraInput')?.value || '');
+      stokOzetPanelleriniGuncelle();
+
       modalKapat(document.getElementById('stokEkleModal'));
-      stoklariGetir();
       ozetBilgileriniGetir();
+      if (!duzenlemeSon && !(yeniKayit && yeniKayit.StokID)) stoklariGetir();
       await tedAlimStokEkleDonusYap();
       if (musteriSatisDonusAktif) await musteriSatisStokEkleDonusYap();
     } else {

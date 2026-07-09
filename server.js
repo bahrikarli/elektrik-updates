@@ -1242,7 +1242,7 @@ app.post('/api/stok', async (req, res) => {
     const { UrunAdi, Kategori, Barkod, AlisFiyati, SatisFiyati, MevcutMiktar, Birim, KritikEsik, HedefEsik, kullanici } = req.body;
 
     const pool = await poolPromise;
-    await pool.request()
+    const ins = await pool.request()
       .input('UrunAdi', sql.NVarChar(150), UrunAdi)
       .input('Kategori', sql.NVarChar(50), Kategori || null)
       .input('Barkod', sql.NVarChar(50), Barkod || null)
@@ -1254,10 +1254,11 @@ app.post('/api/stok', async (req, res) => {
       .input('HedefEsik', sql.Int, Number.isInteger(Number(HedefEsik)) ? Number(HedefEsik) : null)
       .query(`
         INSERT INTO Stok (UrunAdi, Kategori, Barkod, AlisFiyati, SatisFiyati, MevcutMiktar, Birim, KritikEsik, HedefEsik) 
+        OUTPUT INSERTED.*
         VALUES (@UrunAdi, @Kategori, @Barkod, @AlisFiyati, @SatisFiyati, @MevcutMiktar, @Birim, @KritikEsik, @HedefEsik)
       `);
     await islemKaydet(kullanici || 'Sistem', 'Stok Ekle', `${UrunAdi} ürünü eklendi`);
-    res.status(201).send('Yeni stok başarıyla eklendi.');
+    res.status(201).json(ins.recordset[0] || { UrunAdi });
   } catch (err) {
     console.error(err);
     res.status(500).send('Stok eklenirken bir hata oluştu.');
