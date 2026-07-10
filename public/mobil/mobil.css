@@ -167,6 +167,16 @@ body { overflow: hidden; }
 .kasa-kart .kasa-deger { color: #1565c0; }
 .kasa-havale .kasa-deger { color: #6a1b9a; }
 .kasa-toplam .kasa-deger { color: var(--primary); }
+.kasa-alt-etiket {
+  display: block;
+  font-size: 0.58rem;
+  color: var(--muted);
+  line-height: 1.15;
+  margin-top: 1px;
+}
+.kasa-deger-ikinci {
+  margin-top: 4px;
+}
 .kasa-alt-satir {
   display: flex;
   justify-content: space-between;

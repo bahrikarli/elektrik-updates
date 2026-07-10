@@ -127,7 +127,10 @@
             </div>
             <div class="kasa-kutu kasa-toplam">
               <span class="kasa-etiket">Ciro</span>
-              <span id="kzToplam" class="kasa-deger">—</span>
+              <span id="kzToplamVeresiyesiz" class="kasa-deger">—</span>
+              <span class="kasa-alt-etiket">veresiyesiz</span>
+              <span id="kzToplam" class="kasa-deger kasa-deger-ikinci">—</span>
+              <span class="kasa-alt-etiket">veresiyeli</span>
             </div>
           </div>
           <div class="kasa-alt-satir">
@@ -297,6 +300,7 @@
     <form id="formOdeme" method="dialog" class="dialog-body">
       <h2 class="dialog-title">Tahsilat</h2>
       <p id="dlgOdemeMusteri" class="dialog-alt"></p>
+      <p id="dlgOdemeBorc" class="dialog-alt" style="color:#c62828;font-weight:600;margin-top:-4px"></p>
       <label class="field-label" for="odemeTutar">Tutar (₺)</label>
       <input id="odemeTutar" class="field-input" type="number" min="0.01" step="0.01" inputmode="decimal" required>
       <label class="field-label">Ödeme şekli</label>
@@ -305,6 +309,8 @@
         <option value="Kart">Kart</option>
         <option value="Havale">Havale</option>
       </select>
+      <label class="field-label" for="odemeAciklama">Not</label>
+      <input id="odemeAciklama" class="field-input" type="text" maxlength="200" placeholder="İsteğe bağlı">
       <div class="dialog-actions">
         <button type="button" class="btn btn-ghost" data-dialog-close>İptal</button>
         <button type="submit" class="btn btn-primary">Kaydet</button>

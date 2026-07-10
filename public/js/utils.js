@@ -260,13 +260,23 @@ function tarayiciOneriKapatUygula(el) {
   const type = String(el.type || 'text').toLowerCase();
   if (['hidden', 'submit', 'button', 'checkbox', 'radio', 'file', 'range', 'color'].includes(type)) return;
 
-  if (el.closest?.('#stokEkleModal, #gunlukIslemDetayModal')) {
+  /** Satış / sepet fiyat-adet alanları: şifre önerisi ve readonly kilidi odak kaçırıyor. */
+  const satisModal =
+    el.closest?.(
+      '#stokEkleModal, #gunlukIslemDetayModal, #musteriSatisModal, #musteriIadeModal, #hizliSatisOnayModal',
+    ) ||
+    el.matches?.(
+      '[data-satis-fiyat], [data-satis-miktar], [data-sepet-fiyat], [data-sepet-input], [data-modal-fiyat]',
+    );
+  if (satisModal) {
     el.setAttribute('autocomplete', 'off');
     el.setAttribute('autocorrect', 'off');
     el.setAttribute('spellcheck', 'false');
-    if (el.id && !el.getAttribute('name')) {
-      el.setAttribute('name', `f_${el.id}_${Date.now().toString(36).slice(-4)}`);
-    }
+    el.setAttribute('data-lpignore', 'true');
+    el.setAttribute('data-1p-ignore', 'true');
+    el.setAttribute('data-bwignore', 'true');
+    el.readOnly = false;
+    el.removeAttribute('readonly');
     return;
   }
 
@@ -285,7 +295,11 @@ function tarayiciOneriKapatUygula(el) {
   el.setAttribute('data-form-type', 'other');
 
   const modal = el.closest?.('.modal');
-  if (modal) {
+  const sayisal =
+    type === 'number' ||
+    el.getAttribute('inputmode') === 'decimal' ||
+    el.getAttribute('inputmode') === 'numeric';
+  if (modal && !sayisal) {
     el.setAttribute('autocomplete', 'new-password');
   }
 
@@ -301,9 +315,23 @@ function tarayiciOneriKapatUygula(el) {
 function tarayiciOneriReadonlyKilidiAyarla(el) {
   if (!el || el.dataset?.tarayiciReadonlyKilidi === '1') return;
   if (el.dataset?.otomatikTamamlama === 'acik') return;
-  if (el.closest?.('#giris-ekrani, #girisFormu, #stokEkleModal, #gunlukIslemDetayModal')) return;
+  if (
+    el.closest?.(
+      '#giris-ekrani, #girisFormu, #stokEkleModal, #gunlukIslemDetayModal, #musteriSatisModal, #musteriIadeModal, #hizliSatisOnayModal',
+    )
+  ) {
+    return;
+  }
+  if (
+    el.matches?.(
+      '[data-satis-fiyat], [data-satis-miktar], [data-sepet-fiyat], [data-sepet-input], [data-modal-fiyat]',
+    )
+  ) {
+    return;
+  }
   const type = String(el.type || 'text').toLowerCase();
-  if (['hidden', 'submit', 'button', 'checkbox', 'radio', 'file', 'range', 'color', 'password'].includes(type)) return;
+  if (['hidden', 'submit', 'button', 'checkbox', 'radio', 'file', 'range', 'color', 'password', 'number'].includes(type)) return;
+  if (el.getAttribute('inputmode') === 'decimal' || el.getAttribute('inputmode') === 'numeric') return;
 
   el.dataset.tarayiciReadonlyKilidi = '1';
 
@@ -315,9 +343,8 @@ function tarayiciOneriReadonlyKilidiAyarla(el) {
   el.readOnly = true;
   el.addEventListener('mousedown', kilidiAc, true);
   el.addEventListener('touchstart', kilidiAc, { capture: true, passive: true });
-  el.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Tab' || ev.key === 'Enter') kilidiAc();
-  }, true);
+  el.addEventListener('focus', kilidiAc, true);
+  el.addEventListener('keydown', kilidiAc, true);
 }
 
 function tarayiciOneriModalYenile(modalEl) {

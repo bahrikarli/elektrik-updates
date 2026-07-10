@@ -2882,7 +2882,7 @@ async function musteriHareketSatisDuzenleTxn(transaction, hareketID, kalemler, k
     return { success: false, status: 409, message: 'Devir bakiyesi kaydı düzenlenemez.' };
   }
   if (!Array.isArray(kalemler) || !kalemler.length) {
-    return { success: false, status: 400, message: 'Düzenlenecek kalem bulunamadı.' };
+    return { success: false, status: 400, message: 'En az bir kalem gerekli.' };
   }
 
   const detRs = await new sql.Request(transaction)
@@ -2893,25 +2893,97 @@ async function musteriHareketSatisDuzenleTxn(transaction, hareketID, kalemler, k
       WHERE HareketID = @HareketID
       ORDER BY DetayID ASC
     `);
-  let detaylar = detRs.recordset || [];
+  const eskiDetaylar = detRs.recordset || [];
+  const eskiMap = new Map(eskiDetaylar.map((d) => [Number(d.DetayID), d]));
   const oldToplam = Math.round(Number(hareket.ToplamTutar || 0) * 100) / 100;
 
-  if (!detaylar.length) {
-    let newToplam = 0;
-    for (const k of kalemler) {
-      const satirTutar = Math.round(Number(k.satirTutar) * 100) / 100;
-      if (!Number.isFinite(satirTutar) || satirTutar <= 0) {
-        return { success: false, status: 400, message: 'Geçerli tutar girin.' };
-      }
-      newToplam += satirTutar;
+  const normalizeKalem = (k) => {
+    const detayID = parseInt(k.detayID, 10) || 0;
+    const stokID = parseInt(k.stokID ?? k.urunID, 10) || 0;
+    const miktar = Math.round(Number(k.miktar));
+    let birimFiyat = Number(k.birimFiyat);
+    let satirTutar = Number(k.satirTutar);
+    if ((!Number.isFinite(birimFiyat) || birimFiyat < 0) && Number.isFinite(satirTutar) && miktar > 0) {
+      birimFiyat = Math.round((satirTutar / miktar) * 100) / 100;
     }
+    if ((!Number.isFinite(satirTutar) || satirTutar <= 0) && Number.isFinite(birimFiyat) && miktar > 0) {
+      satirTutar = Math.round(miktar * birimFiyat * 100) / 100;
+    }
+    birimFiyat = Math.round((Number(birimFiyat) || 0) * 100) / 100;
+    satirTutar = Math.round((Number(satirTutar) || 0) * 100) / 100;
+    return {
+      detayID,
+      stokID,
+      urunAdi: String(k.urunAdi || '').trim().substring(0, 150),
+      miktar,
+      birimFiyat,
+      satirTutar,
+    };
+  };
+
+  const yeniKalemler = [];
+  for (const raw of kalemler) {
+    const k = normalizeKalem(raw);
+    if (!Number.isInteger(k.miktar) || k.miktar < 1) {
+      return { success: false, status: 400, message: 'Adet en az 1 olmalıdır.' };
+    }
+    if (!Number.isFinite(k.birimFiyat) || k.birimFiyat < 0) {
+      return { success: false, status: 400, message: 'Geçerli birim fiyat girin.' };
+    }
+    if (!Number.isFinite(k.satirTutar) || k.satirTutar <= 0) {
+      return { success: false, status: 400, message: 'Geçerli satır tutarı girin.' };
+    }
+    if (k.detayID > 0 && !eskiMap.has(k.detayID) && !eskiDetaylar.length) {
+      /* eski detaysız satış — aşağıda özel yol */
+    } else if (k.detayID > 0 && !eskiMap.has(k.detayID)) {
+      return { success: false, status: 400, message: 'Geçersiz kalem seçildi.' };
+    }
+    if (!(k.detayID > 0) && !(k.stokID > 0) && !k.urunAdi) {
+      return { success: false, status: 400, message: 'Yeni kalem için ürün seçin.' };
+    }
+    yeniKalemler.push(k);
+  }
+
+  /** Eski detayı olmayan tek satırlık satışlar */
+  if (!eskiDetaylar.length) {
+    let newToplam = 0;
+    for (const k of yeniKalemler) newToplam += k.satirTutar;
     newToplam = Math.round(newToplam * 100) / 100;
+    for (const k of yeniKalemler) {
+      let stokID = k.stokID > 0 ? k.stokID : null;
+      let urunAdi = k.urunAdi || 'Satış';
+      if (stokID) {
+        const stokRs = await new sql.Request(transaction)
+          .input('StokID', sql.Int, stokID)
+          .query('SELECT StokID, UrunAdi FROM Stok WHERE StokID = @StokID');
+        if (!stokRs.recordset.length) {
+          return { success: false, status: 404, message: 'Ürün bulunamadı.' };
+        }
+        urunAdi = String(stokRs.recordset[0].UrunAdi || urunAdi).substring(0, 150);
+        if (!(await stokSatisDusurTxn(transaction, stokID, k.miktar))) {
+          return { success: false, status: 409, message: 'Stok güncellenemedi.' };
+        }
+      }
+      await new sql.Request(transaction)
+        .input('HareketID', sql.Int, hareketID)
+        .input('StokID', sql.Int, stokID)
+        .input('UrunAdi', sql.NVarChar(150), urunAdi)
+        .input('Miktar', sql.Int, k.miktar)
+        .input('BirimFiyat', sql.Decimal(18, 2), k.birimFiyat)
+        .input('SatirTutar', sql.Decimal(18, 2), k.satirTutar)
+        .query(`
+          INSERT INTO MusteriHareketDetaylari
+            (HareketID, StokID, UrunAdi, Miktar, BirimFiyat, SatirTutar)
+          VALUES
+            (@HareketID, @StokID, @UrunAdi, @Miktar, @BirimFiyat, @SatirTutar)
+        `);
+    }
     const delta = Math.round((newToplam - oldToplam) * 100) / 100;
     if (Math.abs(delta) > 0.009) {
-      const rqCari = new sql.Request(transaction);
-      rqCari.input('MusteriID', sql.Int, hareket.MusteriID);
-      rqCari.input('Delta', sql.Decimal(18, 2), delta);
-      await rqCari.query('UPDATE Musteriler SET Bakiye = Bakiye + @Delta WHERE MusteriID = @MusteriID');
+      await new sql.Request(transaction)
+        .input('MusteriID', sql.Int, hareket.MusteriID)
+        .input('Delta', sql.Decimal(18, 2), delta)
+        .query('UPDATE Musteriler SET Bakiye = Bakiye + @Delta WHERE MusteriID = @MusteriID');
     }
     const odenen = await musteriSatisOdenenToplamTxn(transaction, hareket);
     if (odenen > newToplam + 0.009) {
@@ -2934,59 +3006,86 @@ async function musteriHareketSatisDuzenleTxn(transaction, hareketID, kalemler, k
     return { success: true, message: 'Satış güncellendi.', yeniToplam: newToplam };
   }
 
-  const kalemMap = new Map();
-  for (const k of kalemler) {
-    const detayID = parseInt(k.detayID, 10);
-    if (!Number.isInteger(detayID) || detayID < 1) continue;
-    kalemMap.set(detayID, k);
-  }
-  if (!kalemMap.size) {
-    return { success: false, status: 400, message: 'Geçerli kalem seçilmedi.' };
+  const kalanDetayIds = new Set(yeniKalemler.filter((k) => k.detayID > 0).map((k) => k.detayID));
+
+  /** Silinen kalemler — stok iade */
+  for (const d of eskiDetaylar) {
+    const id = Number(d.DetayID);
+    if (kalanDetayIds.has(id)) continue;
+    if (d.StokID && Number(d.Miktar) > 0) {
+      await new sql.Request(transaction)
+        .input('StokID', sql.Int, d.StokID)
+        .input('Miktar', sql.Int, Number(d.Miktar))
+        .query('UPDATE Stok SET MevcutMiktar = MevcutMiktar + @Miktar WHERE StokID = @StokID');
+    }
+    await new sql.Request(transaction)
+      .input('DetayID', sql.Int, id)
+      .query('DELETE FROM MusteriHareketDetaylari WHERE DetayID = @DetayID');
   }
 
   let newToplam = 0;
-  for (const d of detaylar) {
-    const detayID = Number(d.DetayID);
-    const k = kalemMap.get(detayID);
-    if (!k) {
-      newToplam += Number(d.SatirTutar || 0);
+  for (const k of yeniKalemler) {
+    if (k.detayID > 0) {
+      const d = eskiMap.get(k.detayID);
+      const oldMiktar = Number(d.Miktar || 0);
+      const deltaMiktar = k.miktar - oldMiktar;
+      if (deltaMiktar !== 0 && d.StokID) {
+        if (deltaMiktar > 0) {
+          if (!(await stokSatisDusurTxn(transaction, d.StokID, deltaMiktar))) {
+            return { success: false, status: 409, message: 'Stok güncellenemedi.' };
+          }
+        } else {
+          await new sql.Request(transaction)
+            .input('StokID', sql.Int, d.StokID)
+            .input('Miktar', sql.Int, -deltaMiktar)
+            .query('UPDATE Stok SET MevcutMiktar = MevcutMiktar + @Miktar WHERE StokID = @StokID');
+        }
+      }
+      await new sql.Request(transaction)
+        .input('DetayID', sql.Int, k.detayID)
+        .input('Miktar', sql.Int, k.miktar)
+        .input('BirimFiyat', sql.Decimal(18, 2), k.birimFiyat)
+        .input('SatirTutar', sql.Decimal(18, 2), k.satirTutar)
+        .query(`
+          UPDATE MusteriHareketDetaylari
+          SET Miktar = @Miktar, BirimFiyat = @BirimFiyat, SatirTutar = @SatirTutar
+          WHERE DetayID = @DetayID
+        `);
+      newToplam += k.satirTutar;
       continue;
     }
-    const oldMiktar = Number(d.Miktar || 0);
-    const newMiktar = Math.round(Number(k.miktar));
-    const newSatirTutar = Math.round(Number(k.satirTutar) * 100) / 100;
-    if (!Number.isInteger(newMiktar) || newMiktar < 1) {
-      return { success: false, status: 400, message: 'Adet en az 1 olmalıdır.' };
-    }
-    if (!Number.isFinite(newSatirTutar) || newSatirTutar <= 0) {
-      return { success: false, status: 400, message: 'Geçerli satır tutarı girin.' };
-    }
-    const deltaMiktar = newMiktar - oldMiktar;
-    if (deltaMiktar !== 0 && d.StokID) {
-      if (deltaMiktar > 0) {
-        if (!(await stokSatisDusurTxn(transaction, d.StokID, deltaMiktar))) {
-          return { success: false, status: 409, message: 'Stok güncellenemedi.' };
-        }
-      } else {
-        await new sql.Request(transaction)
-          .input('StokID', sql.Int, d.StokID)
-          .input('Miktar', sql.Int, -deltaMiktar)
-          .query('UPDATE Stok SET MevcutMiktar = MevcutMiktar + @Miktar WHERE StokID = @StokID');
+
+    /** Yeni kalem */
+    let stokID = k.stokID > 0 ? k.stokID : null;
+    let urunAdi = k.urunAdi || 'Ürün';
+    if (stokID) {
+      const stokRs = await new sql.Request(transaction)
+        .input('StokID', sql.Int, stokID)
+        .query('SELECT StokID, UrunAdi FROM Stok WHERE StokID = @StokID');
+      if (!stokRs.recordset.length) {
+        return { success: false, status: 404, message: 'Ürün bulunamadı.' };
+      }
+      urunAdi = String(stokRs.recordset[0].UrunAdi || urunAdi).substring(0, 150);
+      if (!(await stokSatisDusurTxn(transaction, stokID, k.miktar))) {
+        return { success: false, status: 409, message: 'Stok güncellenemedi.' };
       }
     }
-    const birimFiyat = Math.round((newSatirTutar / newMiktar) * 100) / 100;
     await new sql.Request(transaction)
-      .input('DetayID', sql.Int, detayID)
-      .input('Miktar', sql.Int, newMiktar)
-      .input('BirimFiyat', sql.Decimal(18, 2), birimFiyat)
-      .input('SatirTutar', sql.Decimal(18, 2), newSatirTutar)
+      .input('HareketID', sql.Int, hareketID)
+      .input('StokID', sql.Int, stokID)
+      .input('UrunAdi', sql.NVarChar(150), urunAdi.substring(0, 150))
+      .input('Miktar', sql.Int, k.miktar)
+      .input('BirimFiyat', sql.Decimal(18, 2), k.birimFiyat)
+      .input('SatirTutar', sql.Decimal(18, 2), k.satirTutar)
       .query(`
-        UPDATE MusteriHareketDetaylari
-        SET Miktar = @Miktar, BirimFiyat = @BirimFiyat, SatirTutar = @SatirTutar
-        WHERE DetayID = @DetayID
+        INSERT INTO MusteriHareketDetaylari
+          (HareketID, StokID, UrunAdi, Miktar, BirimFiyat, SatirTutar)
+        VALUES
+          (@HareketID, @StokID, @UrunAdi, @Miktar, @BirimFiyat, @SatirTutar)
       `);
-    newToplam += newSatirTutar;
+    newToplam += k.satirTutar;
   }
+
   newToplam = Math.round(newToplam * 100) / 100;
   const delta = Math.round((newToplam - oldToplam) * 100) / 100;
   if (Math.abs(delta) > 0.009) {
@@ -5086,6 +5185,7 @@ function bosGunlukSonuc() {
       veresiye: 0,
       diger: 0,
       toplam: 0,
+      toplamVeresiyesiz: 0,
       kasaGiris: 0,
       giderNakit: 0,
       giderKart: 0,
@@ -5725,6 +5825,7 @@ async function gunlukIslemDetay(pool, basStr, bitStr) {
     veresiye: 0,
     diger: 0,
     toplam: 0,
+    toplamVeresiyesiz: 0,
     kasaGiris: 0,
     giderNakit: 0,
     giderKart: 0,
@@ -5765,6 +5866,11 @@ async function gunlukIslemDetay(pool, basStr, bitStr) {
   });
 
   const islemlerGoster = genisletilmis.filter((r) => !gunlukListedeGizlenecekSatirMi(r));
+
+  ozet.toplam = Math.round((Number(ozet.toplam) || 0) * 100) / 100;
+  ozet.veresiye = Math.round((Number(ozet.veresiye) || 0) * 100) / 100;
+  ozet.toplamVeresiyesiz = Math.round((ozet.toplam - ozet.veresiye) * 100) / 100;
+  if (ozet.toplamVeresiyesiz < 0) ozet.toplamVeresiyesiz = 0;
 
   return { ozet, islemler: islemlerGoster };
 }
@@ -6136,7 +6242,7 @@ app.get('/api/ozet', async (req, res) => {
 
     res.json({
       ToplamAlacak: alacak.recordset[0].Toplam || 0,
-      GunlukCiro: gunluk.ozet.toplam,
+      GunlukCiro: gunluk.ozet.toplamVeresiyesiz,
       ToplamMusteri: musteri.recordset[0].Sayi || 0,
       AcikServis: servis.recordset[0].Sayi || 0,
       ToplamStokUrun: stokToplam.recordset[0].Sayi || 0,

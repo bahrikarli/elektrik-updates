@@ -1440,7 +1440,11 @@
     const islemEl = $('navBugunIslem');
     const ciroEl = $('navBugunCiro');
     if (islemEl) islemEl.textContent = `${islemSay} işlem`;
-    if (ciroEl) ciroEl.textContent = para(oz.toplam || 0);
+    const veresiyesiz =
+      oz.toplamVeresiyesiz != null
+        ? oz.toplamVeresiyesiz
+        : Math.max(0, (Number(oz.toplam) || 0) - (Number(oz.veresiye) || 0));
+    if (ciroEl) ciroEl.textContent = para(veresiyesiz || 0);
 
     const sepetEl = $('navSatisSepet');
     if (sepetEl) {
@@ -1479,9 +1483,14 @@
       const el = $(id);
       if (el) el.textContent = para(val);
     };
+    const veresiyesiz =
+      o.toplamVeresiyesiz != null
+        ? o.toplamVeresiyesiz
+        : Math.max(0, (Number(o.toplam) || 0) - (Number(o.veresiye) || 0));
     set('kzNakit', o.nakit);
     set('kzKart', o.kart);
     set('kzHavale', o.havale);
+    set('kzToplamVeresiyesiz', veresiyesiz);
     set('kzToplam', o.toplam);
     set('kzKasaGiris', o.kasaGiris);
     navKartOzetGuncelle();
@@ -2767,7 +2776,12 @@
     if (!m) return;
     $('dlgOdemeMusteri').textContent = musteriGorunenAd(m);
     const bakiye = Number(m.Bakiye) || 0;
-    $('odemeTutar').value = bakiye > 0 ? bakiye.toFixed(2) : '';
+    const bakiyeTxt = para(bakiye);
+    const borcEl = $('dlgOdemeBorc');
+    if (borcEl) borcEl.textContent = `Kalan borç: ${bakiyeTxt}`;
+    const notEl = $('odemeAciklama');
+    if (notEl) notEl.value = '';
+    $('odemeTutar').value = '';
     $('dlgOdeme').showModal();
   }
 
@@ -2779,13 +2793,14 @@
       return;
     }
     try {
+      const not = ($('odemeAciklama')?.value || '').trim();
       const res = await apiFetch(`/api/musteri/${detayMusteriID}/odeme`, {
         method: 'POST',
         body: JSON.stringify({
           tutar,
           odemeSekli: $('odemeSekli').value,
           kullanici: aktifKullanici,
-          aciklama: 'Mobil tahsilat',
+          aciklama: not || 'Mobil tahsilat',
         }),
       });
       const payload = await res.json().catch(() => ({}));

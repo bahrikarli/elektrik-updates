@@ -56,6 +56,31 @@ function stokToplamUrunSayisi() {
   return (stokListeCache || []).length;
 }
 
+function stokSeviyeFiltreDegeri() {
+  return document.getElementById('stokSeviyeFiltre')?.value || 'tumu';
+}
+
+function stokSeviyeFiltreEtiket(filtre) {
+  if (filtre === 'tehlikeli') return 'Tehlikeli';
+  if (filtre === 'orta') return 'Orta';
+  if (filtre === 'yeterli') return 'Yeterli';
+  return '';
+}
+
+function stokSeviyeFiltreEslesir(urun, filtre) {
+  const f = filtre || 'tumu';
+  if (f === 'tumu') return true;
+  const durum = stokSeviyeMetinDuz(urun);
+  if (f === 'tehlikeli') return durum === 'Tehlikeli' || durum === 'Eksi stok';
+  if (f === 'orta') return durum === 'Orta';
+  if (f === 'yeterli') return durum === 'Yeterli';
+  return true;
+}
+
+function stokListeSeviyeFiltrele() {
+  stokListeFiltrele(document.getElementById('stokAraInput')?.value || '');
+}
+
 function stokOzetPanelleriniGuncelle(listelenenAdet, sinirli) {
   const toplam = stokToplamUrunSayisi();
   const st = document.getElementById('kutuStok');
@@ -63,10 +88,17 @@ function stokOzetPanelleriniGuncelle(listelenenAdet, sinirli) {
   const metin = document.getElementById('stokListeToplamMetin');
   if (!metin) return;
   const ara = String(document.getElementById('stokAraInput')?.value || '').trim();
+  const seviye = stokSeviyeFiltreDegeri();
+  const seviyeAd = stokSeviyeFiltreEtiket(seviye);
   const gosterilen = Number.isFinite(listelenenAdet) ? listelenenAdet : toplam;
   const n = String(toplam);
-  if (ara && gosterilen !== toplam) {
-    metin.innerHTML = `<strong class="text-dark">${gosterilen}</strong> eşleşme (${n} ürün içinde)${sinirli ? ` — ilk ${STOK_LISTE_GOSTER_LIMIT} gösteriliyor` : ''}`;
+  const sinirEk = sinirli ? ` — ilk ${STOK_LISTE_GOSTER_LIMIT} gösteriliyor` : '';
+  if (ara || seviye !== 'tumu') {
+    const parcalar = [];
+    if (seviyeAd) parcalar.push(`<strong class="text-dark">${seviyeAd}</strong> stok`);
+    if (ara) parcalar.push(`"${gunlukMetinEsc(ara)}" araması`);
+    const filtreMetin = parcalar.join(' + ');
+    metin.innerHTML = `<strong class="text-dark">${gosterilen}</strong> ürün (${filtreMetin}, ${n} içinde)${sinirEk}`;
     return;
   }
   if (sinirli) {
@@ -133,8 +165,10 @@ function stokTabloSatirHtml(urun) {
 function stokListeFiltreleHemen(q) {
   const tb = document.getElementById('stokTabloGovdesi');
   if (!tb) return;
-  const ara = String(q || '').trim();
+  const ara = String(q ?? document.getElementById('stokAraInput')?.value ?? '').trim();
+  const seviye = stokSeviyeFiltreDegeri();
   let rows = stokListeCache || [];
+  if (seviye !== 'tumu') rows = rows.filter((u) => stokSeviyeFiltreEslesir(u, seviye));
   if (ara) rows = rows.filter((u) => stokAraEsles(u, ara));
   const toplam = rows.length;
   const sinirli = !!ara && toplam > STOK_LISTE_GOSTER_LIMIT;
@@ -1526,6 +1560,17 @@ function musteriTahsilatModalAc() {
     const ad = document.getElementById('mdAdSoyad')?.textContent || 'Müşteri';
     const el = document.getElementById('mdTahsilatMusteri');
     if (el) el.textContent = ad;
+
+    const bakiye = musteriSatisMevcutAlacakOku();
+    const bakiyeTxt = musteriDetayParaFmt(bakiye);
+    const borcEl = document.getElementById('mdTahsilatBorc');
+    if (borcEl) borcEl.textContent = bakiyeTxt;
+
+    const notEl = document.getElementById('mdOdemeAciklama');
+    if (notEl) notEl.value = '';
+
+    const tutarEl = document.getElementById('mdOdemeTutar');
+    if (tutarEl) tutarEl.value = '';
   });
 }
 
@@ -1868,7 +1913,7 @@ function musteriSatisSepetSonEklenenOdak(urunID) {
   setTimeout(() => {
     const tb = document.getElementById('mdSatisSepetGovde');
     if (!tb) return;
-    const inp = tb.querySelector(`input[onchange*="musteriSatisSepetFiyatDegisti(${urunID}, this)"]`);
+    const inp = tb.querySelector(`input[data-satis-fiyat="${urunID}"]`);
     inp?.focus();
     inp?.select();
   }, 60);
@@ -1882,13 +1927,47 @@ function musteriSatisSepetStokBul(urunID) {
   return musteriSatisStokCache.find((s) => Number(s.StokID) === Number(urunID));
 }
 
+function musteriSatisSepetSatirTutarGuncelle(urunID) {
+  const s = musteriSatisSepet.find((x) => Number(x.urunID) === Number(urunID));
+  const tb = document.getElementById('mdSatisSepetGovde');
+  if (!s || !tb) return;
+  const row = tb.querySelector(`tr[data-satis-urun="${urunID}"]`);
+  if (!row) return;
+  const tutarEl = row.querySelector('[data-satis-tutar]');
+  if (tutarEl) {
+    tutarEl.textContent = musteriDetayParaFmt(Number(s.miktar) * Number(s.fiyat));
+  }
+}
+
+function musteriSatisSepetMiktarInput(urunID, el) {
+  const s = musteriSatisSepet.find((x) => Number(x.urunID) === Number(urunID));
+  if (!s || !el) return;
+  let miktar = parseInt(el.value, 10);
+  if (!Number.isInteger(miktar) || miktar < 1) return;
+  s.miktar = miktar;
+  musteriSatisSepetSatirTutarGuncelle(urunID);
+  musteriSatisOzetGuncelle();
+}
+
 function musteriSatisSepetMiktarDegisti(urunID, el) {
   const s = musteriSatisSepet.find((x) => Number(x.urunID) === Number(urunID));
   if (!s || !el) return;
   let miktar = parseInt(el.value, 10);
   if (!Number.isInteger(miktar) || miktar < 1) miktar = 1;
   s.miktar = miktar;
-  musteriSatisSepetCiz();
+  el.value = String(miktar);
+  musteriSatisSepetSatirTutarGuncelle(urunID);
+  musteriSatisOzetGuncelle();
+}
+
+function musteriSatisSepetFiyatInput(urunID, el) {
+  const s = musteriSatisSepet.find((x) => Number(x.urunID) === Number(urunID));
+  if (!s || !el) return;
+  const fiyat = musteriSatisSayiOku(el.value);
+  if (!Number.isFinite(fiyat) || fiyat < 0) return;
+  s.fiyat = Math.round(fiyat * 100) / 100;
+  musteriSatisSepetSatirTutarGuncelle(urunID);
+  musteriSatisOzetGuncelle();
 }
 
 function musteriSatisSepetFiyatDegisti(urunID, el) {
@@ -1908,7 +1987,9 @@ function musteriSatisSepetFiyatDegisti(urunID, el) {
     return;
   }
   s.fiyat = Math.round(fiyat * 100) / 100;
-  musteriSatisSepetCiz();
+  el.value = s.fiyat.toFixed(2);
+  musteriSatisSepetSatirTutarGuncelle(urunID);
+  musteriSatisOzetGuncelle();
 }
 
 function musteriSatisSepetCiz() {
@@ -1920,17 +2001,21 @@ function musteriSatisSepetCiz() {
     tb.innerHTML = musteriSatisSepet
       .map((s) => {
         const satirTutar = Number(s.miktar) * Number(s.fiyat);
-        return `<tr>
+        return `<tr data-satis-urun="${s.urunID}">
         <td class="small fw-semibold">${gunlukMetinEsc(s.urunAdi)}</td>
         <td class="text-center">
-          <input type="number" min="1" step="1" class="form-control form-control-sm text-center"
-            value="${s.miktar}" oninput="musteriSatisSepetMiktarDegisti(${s.urunID}, this)">
+          <input type="number" min="1" step="1" class="form-control form-control-sm text-center" autocomplete="off"
+            value="${s.miktar}" data-satis-miktar="${s.urunID}" data-otomatik-tamamlama="acik"
+            oninput="musteriSatisSepetMiktarInput(${s.urunID}, this)"
+            onchange="musteriSatisSepetMiktarDegisti(${s.urunID}, this)">
         </td>
         <td class="text-end">
-          <input type="number" step="0.01" min="0" class="form-control form-control-sm text-end"
-            value="${Number(s.fiyat || 0).toFixed(2)}" oninput="musteriSatisSepetFiyatDegisti(${s.urunID}, this)">
+          <input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-sm text-end buyuk-harf-kapali"
+            value="${Number(s.fiyat || 0).toFixed(2)}" data-satis-fiyat="${s.urunID}" data-otomatik-tamamlama="acik"
+            oninput="musteriSatisSepetFiyatInput(${s.urunID}, this)"
+            onchange="musteriSatisSepetFiyatDegisti(${s.urunID}, this)">
         </td>
-        <td class="text-end text-nowrap small fw-semibold">${musteriDetayParaFmt(satirTutar)}</td>
+        <td class="text-end text-nowrap small fw-semibold" data-satis-tutar>${musteriDetayParaFmt(satirTutar)}</td>
         <td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger" onclick="musteriSatisSepettenSil(${s.urunID})" title="Sil"><i class="fa-solid fa-xmark"></i></button></td>
       </tr>`;
       })
@@ -2068,6 +2153,21 @@ function musteriCariTahsilatSatirMi(row) {
 function musteriCariKalemSatirMi(row) {
   const st = row.SatirTur || '';
   return st === 'satis_kalem' || st === 'iade_kalem';
+}
+
+/** Grup anahtarına göre satış/iade kalem toplamları (çok kalemli gruplarda ilk satırda gösterilir). */
+function musteriCariGrupSatisToplamMap(satirlar) {
+  const map = new Map();
+  for (const row of satirlar || []) {
+    if (!musteriCariKalemSatirMi(row)) continue;
+    const key = row.GrupAnahtar || gunlukIslemGrupAnahtari(row);
+    if (!key) continue;
+    const prev = map.get(key) || { toplam: 0, adet: 0 };
+    prev.toplam = Math.round((prev.toplam + Number(row.Tutar || 0)) * 100) / 100;
+    prev.adet += 1;
+    map.set(key, prev);
+  }
+  return map;
 }
 
 function musteriCariUrunAdiFallback(h) {
@@ -2269,6 +2369,7 @@ function musteriCariListeSatirlari(hareketler) {
 function musteriCariTabloSatirHtml(row, grupYuruyenMap, opts = {}) {
   const rapor = !!opts.rapor;
   const yazdir = !!opts.yazdir;
+  const grupSatisMap = opts.grupSatisMap || null;
   const tarihStr = tarihTrGoster(row.Tarih);
   const kalem = musteriCariKalemSatirMi(row);
   const tahsilat = musteriCariTahsilatSatirMi(row);
@@ -2295,7 +2396,22 @@ function musteriCariTabloSatirHtml(row, grupYuruyenMap, opts = {}) {
     birimSayi = Math.round((satirTutar / miktar) * 100) / 100;
   }
   const birimFmt = birimSayi > 0 ? musteriDetayParaFmt(birimSayi) : '—';
-  const tutarStr = `${satirTutar.toFixed(2)} ₺`;
+  const tutarStr = musteriDetayParaFmt(satirTutar);
+
+  const grupKey = row.GrupAnahtar || gunlukIslemGrupAnahtari(row);
+  const grupBilgi = grupKey && grupSatisMap ? grupSatisMap.get(grupKey) : null;
+  const grupToplamGoster =
+    kalem &&
+    row.GunlukTurBaslikGoster !== false &&
+    grupBilgi &&
+    grupBilgi.adet > 1 &&
+    grupBilgi.toplam > 0.009;
+  const grupToplamStr = grupToplamGoster
+    ? musteriDetayParaFmt(grupBilgi.toplam)
+    : '';
+  const turAlt = grupToplamGoster
+    ? `<div class="small fw-bold text-danger mt-1" title="Bu satışın toplamı">${gunlukMetinEsc(grupToplamStr)}</div>`
+    : '';
 
   const yuruyen =
     row.GunlukGrupSon && row.GrupAnahtar ? grupYuruyenMap.get(row.GrupAnahtar) : null;
@@ -2308,7 +2424,7 @@ function musteriCariTabloSatirHtml(row, grupYuruyenMap, opts = {}) {
     const turHucre =
       row.GunlukTurBaslikGoster === false
         ? '<td></td>'
-        : `<td>${gunlukMetinEsc(etiketMetin)}</td>`;
+        : `<td>${gunlukMetinEsc(etiketMetin)}${grupToplamGoster ? `<br><b>${gunlukMetinEsc(grupToplamStr)}</b>` : ''}</td>`;
     const yuruyenHucre =
       row.GunlukGrupSon && yuruyen != null
         ? `<td class="r b">${gunlukMetinEsc(musteriDetayParaFmt(yuruyen))}</td>`
@@ -2349,7 +2465,7 @@ function musteriCariTabloSatirHtml(row, grupYuruyenMap, opts = {}) {
     const tutarCls = iadeKalem ? 'gunluk-mal-alim-tutar' : 'gunluk-kalem-tutar';
     return `<tr class="${gunlukIslemSatirSiniflari(row, kalemCls)}">
       ${gunlukIslemTarihHucre(row, tarihStr)}
-      ${gunlukIslemTurHucre(row, turBadge, turEtiket, mobilIkon)}
+      ${gunlukIslemTurHucre(row, turBadge, turEtiket, mobilIkon, '', turAlt)}
       <td class="gunluk-kalem-urun">${gunlukMetinEsc(row.UrunAdi || '-')}</td>
       <td class="text-center text-nowrap">${miktar}</td>
       <td class="text-end text-nowrap">${birimFmt}</td>
@@ -2377,7 +2493,10 @@ function musteriCariTabloSatirHtml(row, grupYuruyenMap, opts = {}) {
 function musteriCariHareketTabloHtml(hareketler, opts = {}) {
   const grupYuruyenMap = musteriCariGrupYuruyenMap(hareketler);
   const satirlar = gunlukIslemGruplariIsaretle(musteriCariListeSatirlari(hareketler));
-  return satirlar.map((row) => musteriCariTabloSatirHtml(row, grupYuruyenMap, opts)).join('');
+  const grupSatisMap = musteriCariGrupSatisToplamMap(satirlar);
+  return satirlar
+    .map((row) => musteriCariTabloSatirHtml(row, grupYuruyenMap, { ...opts, grupSatisMap }))
+    .join('');
 }
 
 function musteriDetayHareketTabloDoldur(hareketler) {
@@ -2799,11 +2918,11 @@ function musteriHareketDuzenleTurGoster(tip, h) {
   if (satisMi) {
     badgeClass = 'bg-danger';
     bannerClass = 'alert-danger';
-    aciklama = 'Satış kalemlerinde adet ve satır tutarını düzenleyebilirsiniz. Stok otomatik güncellenir.';
+    aciklama = 'Adet ve birim fiyatı değiştirebilir, üstten yeni ürün ekleyebilirsiniz. Stok otomatik güncellenir.';
   } else if (iadeMi) {
     badgeClass = 'bg-warning text-dark';
     bannerClass = 'alert-warning';
-    aciklama = 'İade kalemlerinde adet ve satır tutarını düzenleyebilirsiniz.';
+    aciklama = 'İade kalemlerinde adet ve birim fiyatı düzenleyebilirsiniz.';
   } else if (tahsilatMi) {
     badgeClass = 'bg-success';
     bannerClass = 'alert-success';
@@ -2829,6 +2948,194 @@ function musteriHareketDuzenleTurGoster(tip, h) {
   if (aciklamaEl) aciklamaEl.textContent = aciklama;
 }
 
+let mhdDuzenleKalemler = [];
+let mhdDuzenleSeciliStok = null;
+let mhdDuzenleSatirSayac = 0;
+
+function mhdDuzenleSatirTutarHesapla(k) {
+  const m = Math.max(1, Math.round(Number(k.miktar) || 1));
+  const bf = Math.round((Number(k.birimFiyat) || 0) * 100) / 100;
+  return Math.round(m * bf * 100) / 100;
+}
+
+function mhdDuzenleSatisToplamGuncelle() {
+  const top = mhdDuzenleKalemler.reduce((s, k) => s + mhdDuzenleSatirTutarHesapla(k), 0);
+  const el = document.getElementById('mhdDuzenleSatisToplam');
+  if (el) el.textContent = musteriDetayParaFmt(Math.round(top * 100) / 100);
+}
+
+function mhdDuzenleSatisTabloCiz() {
+  const tb = document.getElementById('mhdDuzenleSatisGovde');
+  if (!tb) return;
+  if (!mhdDuzenleKalemler.length) {
+    tb.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">Kalem yok — üstten ürün ekleyin</td></tr>';
+    mhdDuzenleSatisToplamGuncelle();
+    return;
+  }
+  tb.innerHTML = mhdDuzenleKalemler
+    .map((k, idx) => {
+      const satirTutar = mhdDuzenleSatirTutarHesapla(k);
+      return `<tr data-mhd-idx="${idx}">
+        <td class="small fw-semibold">${gunlukMetinEsc(k.urunAdi || '-')}</td>
+        <td class="text-center">
+          <div class="input-group input-group-sm justify-content-center" style="max-width:7.5rem;margin:0 auto;">
+            <button type="button" class="btn btn-outline-secondary" onclick="mhdDuzenleMiktarDegistir(${idx}, -1)" title="Azalt">−</button>
+            <input type="number" min="1" step="1" class="form-control text-center mhd-duzenle-miktar"
+              value="${Number(k.miktar) || 1}" oninput="mhdDuzenleMiktarInput(${idx}, this)">
+            <button type="button" class="btn btn-outline-secondary" onclick="mhdDuzenleMiktarDegistir(${idx}, 1)" title="Artır">+</button>
+          </div>
+        </td>
+        <td class="text-end">
+          <input type="number" min="0" step="0.01" class="form-control form-control-sm text-end mhd-duzenle-birim"
+            value="${Number(k.birimFiyat || 0).toFixed(2)}" oninput="mhdDuzenleBirimInput(${idx}, this)">
+        </td>
+        <td class="text-end text-nowrap small fw-semibold text-danger mhd-duzenle-satir-tutar">${musteriDetayParaFmt(satirTutar)}</td>
+        <td class="text-end">
+          <button type="button" class="btn btn-sm btn-outline-danger" onclick="mhdDuzenleKalemSil(${idx})" title="Satırı sil"><i class="fa-solid fa-xmark"></i></button>
+        </td>
+      </tr>`;
+    })
+    .join('');
+  mhdDuzenleSatisToplamGuncelle();
+}
+
+function mhdDuzenleMiktarDegistir(idx, delta) {
+  const k = mhdDuzenleKalemler[idx];
+  if (!k) return;
+  k.miktar = Math.max(1, (Number(k.miktar) || 1) + delta);
+  mhdDuzenleSatisTabloCiz();
+}
+
+function mhdDuzenleMiktarInput(idx, el) {
+  const k = mhdDuzenleKalemler[idx];
+  if (!k || !el) return;
+  let m = parseInt(el.value, 10);
+  if (!Number.isInteger(m) || m < 1) return;
+  k.miktar = m;
+  const tutarEl = el.closest('tr')?.querySelector('.mhd-duzenle-satir-tutar');
+  if (tutarEl) tutarEl.textContent = musteriDetayParaFmt(mhdDuzenleSatirTutarHesapla(k));
+  mhdDuzenleSatisToplamGuncelle();
+}
+
+function mhdDuzenleBirimInput(idx, el) {
+  const k = mhdDuzenleKalemler[idx];
+  if (!k || !el) return;
+  const bf = Number(el.value);
+  if (!Number.isFinite(bf) || bf < 0) return;
+  k.birimFiyat = Math.round(bf * 100) / 100;
+  const tutarEl = el.closest('tr')?.querySelector('.mhd-duzenle-satir-tutar');
+  if (tutarEl) tutarEl.textContent = musteriDetayParaFmt(mhdDuzenleSatirTutarHesapla(k));
+  mhdDuzenleSatisToplamGuncelle();
+}
+
+function mhdDuzenleKalemSil(idx) {
+  if (mhdDuzenleKalemler.length <= 1) {
+    alert('Satışta en az bir kalem kalmalı.');
+    return;
+  }
+  mhdDuzenleKalemler.splice(idx, 1);
+  mhdDuzenleSatisTabloCiz();
+}
+
+function mhdDuzenleUrunAraSonucGizle() {
+  const el = document.getElementById('mhdDuzenleUrunSonuc');
+  if (el) {
+    el.classList.add('d-none');
+    el.innerHTML = '';
+  }
+}
+
+function mhdDuzenleUrunAraGuncelle(deger) {
+  const q = String(deger || '').trim();
+  const kutu = document.getElementById('mhdDuzenleUrunSonuc');
+  if (!kutu) return;
+  if (q.length < 1) {
+    mhdDuzenleUrunAraSonucGizle();
+    return;
+  }
+  const kaynak = (musteriSatisStokCache && musteriSatisStokCache.length)
+    ? musteriSatisStokCache
+    : (stokListeCache || []);
+  const liste = kaynak.filter((s) => stokMetinAramaEslesir(s, q)).slice(0, 15);
+  if (!liste.length) {
+    kutu.innerHTML = '<div class="list-group-item small text-muted">Ürün bulunamadı</div>';
+    kutu.classList.remove('d-none');
+    return;
+  }
+  kutu.innerHTML = liste
+    .map((u) => {
+      const fiyat = musteriDetayParaFmt(u.SatisFiyati);
+      return `<button type="button" class="list-group-item list-group-item-action py-2"
+        onclick="mhdDuzenleUrunSec(${Number(u.StokID)})">
+        <div class="d-flex justify-content-between gap-2">
+          <span class="fw-semibold small">${gunlukMetinEsc(u.UrunAdi || '')}</span>
+          <span class="badge bg-primary">${gunlukMetinEsc(fiyat)}</span>
+        </div>
+        <small class="text-muted">Stok: ${Number(u.MevcutMiktar || 0)}</small>
+      </button>`;
+    })
+    .join('');
+  kutu.classList.remove('d-none');
+}
+
+function mhdDuzenleUrunSec(stokID) {
+  const kaynak = (musteriSatisStokCache && musteriSatisStokCache.length)
+    ? musteriSatisStokCache
+    : (stokListeCache || []);
+  const u = kaynak.find((s) => Number(s.StokID) === Number(stokID));
+  if (!u) return;
+  mhdDuzenleSeciliStok = u;
+  const metin = document.getElementById('mhdDuzenleSeciliUrunMetin');
+  if (metin) {
+    metin.innerHTML = `Seçili: <strong>${gunlukMetinEsc(u.UrunAdi)}</strong> · ${gunlukMetinEsc(musteriDetayParaFmt(u.SatisFiyati))}`;
+  }
+  const btn = document.getElementById('mhdDuzenleEkleBtn');
+  if (btn) btn.disabled = false;
+  const ara = document.getElementById('mhdDuzenleUrunAra');
+  if (ara) ara.value = u.UrunAdi || '';
+  mhdDuzenleUrunAraSonucGizle();
+}
+
+function mhdDuzenleSeciliUrunEkle() {
+  if (!mhdDuzenleSeciliStok) {
+    alert('Önce listeden ürün seçin.');
+    return;
+  }
+  const adetEl = document.getElementById('mhdDuzenleEkleAdet');
+  let miktar = parseInt(adetEl?.value, 10);
+  if (!Number.isInteger(miktar) || miktar < 1) miktar = 1;
+  const stokID = Number(mhdDuzenleSeciliStok.StokID);
+  const mevcut = mhdDuzenleKalemler.find((k) => Number(k.stokID) === stokID && Number(k.stokID) > 0);
+  if (mevcut) {
+    mevcut.miktar = (Number(mevcut.miktar) || 0) + miktar;
+  } else {
+    mhdDuzenleSatirSayac += 1;
+    mhdDuzenleKalemler.push({
+      key: `yeni-${mhdDuzenleSatirSayac}`,
+      detayID: 0,
+      stokID,
+      urunAdi: mhdDuzenleSeciliStok.UrunAdi || 'Ürün',
+      miktar,
+      birimFiyat: Math.round(Number(mhdDuzenleSeciliStok.SatisFiyati || 0) * 100) / 100,
+    });
+  }
+  mhdDuzenleSeciliStok = null;
+  const btn = document.getElementById('mhdDuzenleEkleBtn');
+  if (btn) btn.disabled = true;
+  const ara = document.getElementById('mhdDuzenleUrunAra');
+  if (ara) ara.value = '';
+  if (adetEl) adetEl.value = '1';
+  const metin = document.getElementById('mhdDuzenleSeciliUrunMetin');
+  if (metin) metin.textContent = 'Listeden ürün seçin, adet yazıp Ekle’ye basın.';
+  mhdDuzenleSatisTabloCiz();
+}
+
+function mhdDuzenleUrunAraKeydown(ev) {
+  if (ev.key !== 'Enter') return;
+  ev.preventDefault();
+  if (mhdDuzenleSeciliStok) mhdDuzenleSeciliUrunEkle();
+}
+
 async function musteriHareketDuzenleAc(hareketID, tip) {
   const res = await fetch(`/api/musteri/hareket/${hareketID}/detay`);
   const data = await res.json().catch(() => ({}));
@@ -2851,24 +3158,46 @@ async function musteriHareketDuzenleAc(hareketID, tip) {
   if (tip === 'satis') {
     satisAlani.classList.remove('d-none');
     odemeAlani.classList.add('d-none');
-    const tb = document.getElementById('mhdDuzenleSatisGovde');
-    if (!detaylar.length) {
-      tb.innerHTML = `<tr data-detay-id="0">
-        <td>${gunlukMetinEsc(h.Aciklama || 'Satış')}</td>
-        <td class="text-center"><input type="number" min="1" step="1" class="form-control form-control-sm text-center mhd-duzenle-miktar" value="1"></td>
-        <td class="text-end"><input type="number" min="0.01" step="0.01" class="form-control form-control-sm text-end mhd-duzenle-tutar" value="${Number(h.ToplamTutar || 0).toFixed(2)}"></td>
-      </tr>`;
-    } else {
-      tb.innerHTML = detaylar
-        .map(
-          (d) => `<tr data-detay-id="${Number(d.DetayID || 0)}">
-        <td>${gunlukMetinEsc(d.UrunAdi || '-')}</td>
-        <td class="text-center"><input type="number" min="1" step="1" class="form-control form-control-sm text-center mhd-duzenle-miktar" value="${Number(d.Miktar || 1)}"></td>
-        <td class="text-end"><input type="number" min="0.01" step="0.01" class="form-control form-control-sm text-end mhd-duzenle-tutar" value="${Number(d.SatirTutar || 0).toFixed(2)}"></td>
-      </tr>`
-        )
-        .join('');
+    if (!musteriSatisStokCache.length && !(stokListeCache || []).length) {
+      try {
+        const sr = await fetch('/api/stok');
+        const stoklar = await sr.json();
+        musteriSatisStokCache = Array.isArray(stoklar) ? stoklar : [];
+      } catch (_) {}
     }
+    mhdDuzenleSeciliStok = null;
+    mhdDuzenleSatirSayac = 0;
+    if (!detaylar.length) {
+      mhdDuzenleKalemler = [
+        {
+          key: 'eski-0',
+          detayID: 0,
+          stokID: 0,
+          urunAdi: h.Aciklama || 'Satış',
+          miktar: 1,
+          birimFiyat: Math.round(Number(h.ToplamTutar || 0) * 100) / 100,
+        },
+      ];
+    } else {
+      mhdDuzenleKalemler = detaylar.map((d, i) => ({
+        key: `d-${Number(d.DetayID) || i}`,
+        detayID: Number(d.DetayID || 0),
+        stokID: Number(d.StokID || 0),
+        urunAdi: d.UrunAdi || '-',
+        miktar: Number(d.Miktar || 1),
+        birimFiyat: Math.round(Number(d.BirimFiyat || 0) * 100) / 100,
+      }));
+    }
+    const ara = document.getElementById('mhdDuzenleUrunAra');
+    if (ara) ara.value = '';
+    const adetEl = document.getElementById('mhdDuzenleEkleAdet');
+    if (adetEl) adetEl.value = '1';
+    const btn = document.getElementById('mhdDuzenleEkleBtn');
+    if (btn) btn.disabled = true;
+    const metin = document.getElementById('mhdDuzenleSeciliUrunMetin');
+    if (metin) metin.textContent = 'Listeden ürün seçin, adet yazıp Ekle’ye basın.';
+    mhdDuzenleUrunAraSonucGizle();
+    mhdDuzenleSatisTabloCiz();
   } else {
     satisAlani.classList.add('d-none');
     odemeAlani.classList.remove('d-none');
@@ -2889,17 +3218,28 @@ async function musteriHareketDuzenleKaydet() {
 
   let body = { tip, kullanici: aktifKullanici || 'Sistem' };
   if (tip === 'satis') {
-    const kalemler = [];
-    document.querySelectorAll('#mhdDuzenleSatisGovde tr').forEach((tr) => {
-      const detayID = parseInt(tr.getAttribute('data-detay-id') || '0', 10);
-      const miktarEl = tr.querySelector('.mhd-duzenle-miktar');
-      const tutarEl = tr.querySelector('.mhd-duzenle-tutar');
-      kalemler.push({
-        detayID: detayID || 0,
-        miktar: Number(miktarEl?.value || 0),
-        satirTutar: Number(tutarEl?.value || 0),
-      });
+    if (!mhdDuzenleKalemler.length) {
+      alert('En az bir kalem olmalı.');
+      return;
+    }
+    const kalemler = mhdDuzenleKalemler.map((k) => {
+      const miktar = Math.max(1, Math.round(Number(k.miktar) || 1));
+      const birimFiyat = Math.round((Number(k.birimFiyat) || 0) * 100) / 100;
+      return {
+        detayID: Number(k.detayID) || 0,
+        stokID: Number(k.stokID) || 0,
+        urunAdi: k.urunAdi || '',
+        miktar,
+        birimFiyat,
+        satirTutar: Math.round(miktar * birimFiyat * 100) / 100,
+      };
     });
+    for (const k of kalemler) {
+      if (k.birimFiyat < 0 || k.satirTutar <= 0) {
+        alert('Birim fiyat / satır tutarı geçersiz.');
+        return;
+      }
+    }
     body.kalemler = kalemler;
   } else if (tip === 'odeme') {
     body.tutar = Number(document.getElementById('mhdDuzenleTutar')?.value || 0);
@@ -4182,13 +4522,14 @@ function gunlukIslemTarihHucre(row, tarihStr) {
   return `<td class="text-nowrap small text-secondary">${gunlukMetinEsc(tarihStr)}</td>`;
 }
 
-function gunlukIslemTurHucre(row, turBadge, turEtiket, mobilIkon, ek = '') {
+function gunlukIslemTurHucre(row, turBadge, turEtiket, mobilIkon, ek = '', alt = '') {
   if (row.GunlukTurBaslikGoster === false) {
     return '<td class="gunluk-hucre-bos gunluk-tur-bos"></td>';
   }
   const etiket = gunlukIslemTurEtiketMetin(row, turEtiket);
   const tahsilatTur = gunlukIslemTahsilatSatirMi(row) ? ' gunluk-tur-tahsilat' : '';
-  return `<td class="text-nowrap gunluk-tur-hucre${tahsilatTur}">${ek}<span class="badge ${turBadge}">${gunlukMetinEsc(etiket)}</span>${mobilIkon}</td>`;
+  const nowrap = alt ? '' : ' text-nowrap';
+  return `<td class="gunluk-tur-hucre${nowrap}${tahsilatTur}">${ek}<span class="badge ${turBadge}">${gunlukMetinEsc(etiket)}</span>${mobilIkon}${alt}</td>`;
 }
 
 function gunlukIslemSatirSiniflari(row, ek = '') {
@@ -4224,6 +4565,12 @@ async function gunlukIslemleriYukle() {
     document.getElementById('ozKart').textContent = gunlukParaFmt(oz.kart);
     document.getElementById('ozHavale').textContent = gunlukParaFmt(oz.havale);
     document.getElementById('ozVeresiye').textContent = gunlukParaFmt(oz.veresiye);
+    const veresiyesiz =
+      oz.toplamVeresiyesiz != null
+        ? oz.toplamVeresiyesiz
+        : Math.max(0, (Number(oz.toplam) || 0) - (Number(oz.veresiye) || 0));
+    const ozVeresiyesizEl = document.getElementById('ozToplamVeresiyesiz');
+    if (ozVeresiyesizEl) ozVeresiyesizEl.textContent = gunlukParaFmt(veresiyesiz);
     document.getElementById('ozToplam').textContent = gunlukParaFmt(oz.toplam);
     document.getElementById('gunlukKasaGirisOzet').textContent = gunlukParaFmt(oz.kasaGiris);
     document.getElementById('gunlukCariAlacak').textContent = gunlukParaFmt(data.cariAlacakToplam);
