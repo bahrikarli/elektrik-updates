@@ -4109,7 +4109,8 @@ function gunlukIslemSatisKalemSatirlarinaBol(islemler) {
         TurEtiket: 'Satış',
         KisaAciklama: musteriAd,
         MusteriAd: musteriAd,
-        Odeme: '—',
+        // Ana satırdaki ödeme bilgisini koru (Veresiye/Nakit/Kart/Havale)
+        Odeme: r.Odeme && r.Odeme !== '—' ? r.Odeme : '—',
       });
     });
   }

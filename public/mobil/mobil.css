@@ -1265,6 +1265,22 @@ body { overflow: hidden; }
   background: #ffebee;
   color: var(--danger);
 }
+.islem-tur-veresiye {
+  background: #fff3e0;
+  color: #e65100;
+}
+.islem-tur-nakit {
+  background: #e8f5e9;
+  color: #1b5e20;
+}
+.islem-tur-kart {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+.islem-tur-havale {
+  background: #f3e5f5;
+  color: #6a1b9a;
+}
 .islem-tutar {
   font-weight: 700;
   font-size: 0.95rem;
@@ -1272,6 +1288,7 @@ body { overflow: hidden; }
 }
 .islem-tutar-giris { color: var(--success); }
 .islem-tutar-cikis { color: var(--danger); }
+.islem-tutar-veresiye { color: #e65100; }
 .islem-alt {
   font-size: 0.76rem;
   color: var(--muted);
@@ -1282,9 +1299,47 @@ body { overflow: hidden; }
   margin-top: 4px;
   line-height: 1.35;
 }
+.islem-not-veresiye {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-weight: 600;
+}
+.islem-veresiye-ad {
+  color: var(--text);
+}
+.islem-veresiye-rozet {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #fff3e0;
+  color: #e65100;
+  border: 1px solid #ffcc80;
+}
 .islem-kart-satis {
   padding-bottom: 8px;
 }
+.islem-kart-veresiye {
+  border-color: #ffcc80;
+  background: linear-gradient(180deg, #fffaf3 0%, #fff 100%);
+}
+.islem-kart-odendi {
+  border-color: #81c784;
+  background: linear-gradient(180deg, #f1faf3 0%, #fff 100%);
+}
+.islem-odeme-ikon {
+  font-size: 0.95em;
+  line-height: 1;
+  vertical-align: middle;
+}
+.islem-tur .islem-odeme-ikon {
+  margin-left: 3px;
+}
+.islem-odeme-nakit { filter: saturate(1.1); }
 .islem-mobil-ikon {
   font-size: 0.85em;
   margin-left: 2px;

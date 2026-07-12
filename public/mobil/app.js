@@ -1351,6 +1351,61 @@
     }));
   }
 
+  function gunlukOdemeTipNorm(odeme) {
+    const o = String(odeme || '')
+      .trim()
+      .toLowerCase()
+      .replace(/ı/g, 'i');
+    if (!o || o === '—' || o === '-') return '';
+    if (o.includes('veresiye')) return 'veresiye';
+    if (o.includes('nakit')) return 'nakit';
+    if (o.includes('kart') || o.includes('pos')) return 'kart';
+    if (o.includes('havale') || o.includes('eft')) return 'havale';
+    return '';
+  }
+
+  function gunlukOdemeIkonHtml(tip) {
+    if (tip === 'nakit') {
+      return '<span class="islem-odeme-ikon islem-odeme-nakit" title="Nakit" aria-label="Nakit">💵</span>';
+    }
+    if (tip === 'kart') {
+      return '<span class="islem-odeme-ikon islem-odeme-kart" title="Kart" aria-label="Kart">💳</span>';
+    }
+    if (tip === 'havale') {
+      return '<span class="islem-odeme-ikon islem-odeme-havale" title="Havale" aria-label="Havale">🏦</span>';
+    }
+    if (tip === 'veresiye') {
+      return '<span class="islem-odeme-ikon islem-odeme-veresiye" title="Veresiye" aria-label="Veresiye">📒</span>';
+    }
+    return '';
+  }
+
+  function gunlukGrupOdeme(grupRows) {
+    const rows = grupRows || [];
+    const tahsilatSatir = rows.find(
+      (r) => r.SatirTur === 'tahsilat' || String(r.TurEtiket || '').toLowerCase().includes('tahsilat'),
+    );
+    for (const r of rows) {
+      const tip = gunlukOdemeTipNorm(r.Odeme);
+      if (tip === 'veresiye') return 'Veresiye';
+    }
+    for (const r of rows) {
+      const metin = `${r.Aciklama || ''} ${r.KisaAciklama || ''} ${r.IslemTipi || ''}`;
+      if (/veresiye/i.test(metin)) return 'Veresiye';
+    }
+    if (tahsilatSatir?.Odeme && tahsilatSatir.Odeme !== '—') return String(tahsilatSatir.Odeme);
+    for (const r of rows) {
+      if (r.Odeme && r.Odeme !== '—') return String(r.Odeme);
+    }
+    const musteriSatis = rows.some(
+      (r) =>
+        r.Kaynak === 'musteri_satis' ||
+        (Number(r.MusteriID) > 0 && (r.SatirTur === 'satis' || r.SatirTur === 'satis_kalem')),
+    );
+    if (musteriSatis && !tahsilatSatir) return 'Veresiye';
+    return '';
+  }
+
   function gunlukGrupKartHtml(grupRows, silGoster) {
     const kalemler = gunlukGrupKalemleri(grupRows);
     const ilk = grupRows[0];
@@ -1366,15 +1421,30 @@
       silGoster && perakende && logID
         ? `<button type="button" class="hareket-sil-btn" data-gunluk-sil="${logID}" title="Sil" aria-label="Sil">✕</button>`
         : '';
-    const tahsilatSatir = grupRows.find((r) => r.SatirTur === 'tahsilat' || String(r.TurEtiket || '').toLowerCase().includes('tahsilat'));
-    let odeme = '';
-    if (tahsilatSatir?.Odeme && tahsilatSatir.Odeme !== '—') odeme = String(tahsilatSatir.Odeme);
-    else if (ilk.Odeme && ilk.Odeme !== '—') odeme = String(ilk.Odeme);
+    const odeme = gunlukGrupOdeme(grupRows);
+    const odemeTip = gunlukOdemeTipNorm(odeme);
+    const odemeIkon = gunlukOdemeIkonHtml(odemeTip);
+    const veresiyeMi = odemeTip === 'veresiye';
     const yon = grupRows.some((r) => r.Yon === 'cikis');
-    const tutarCls = yon ? 'islem-tutar-cikis' : 'islem-tutar-giris';
-    const turCls = gunlukIslemTurSinif({ ...ilk, TurEtiket: tur, Yon: yon ? 'cikis' : ilk.Yon });
+    const paraAlindiMi = !yon && (odemeTip === 'nakit' || odemeTip === 'kart' || odemeTip === 'havale');
+    const kartOdemeCls = veresiyeMi
+      ? ' islem-kart-veresiye'
+      : paraAlindiMi
+        ? ' islem-kart-odendi'
+        : '';
+    const tutarCls = yon
+      ? 'islem-tutar-cikis'
+      : veresiyeMi
+        ? 'islem-tutar-veresiye'
+        : 'islem-tutar-giris';
+    const turCls = gunlukIslemTurSinif({
+      ...ilk,
+      TurEtiket: tur,
+      Yon: yon ? 'cikis' : ilk.Yon,
+      Odeme: odeme,
+    });
     const tarihRow = grupRows.find((r) => r.GunlukTarihGoster !== false) || ilk;
-    const altParca = [odeme, tarihTrGoster(tarihRow.Tarih)].filter(Boolean);
+    const altParca = [odeme && !veresiyeMi ? odeme : '', tarihTrGoster(tarihRow.Tarih)].filter(Boolean);
     let not = gunlukGrupNot(grupRows);
     if (perakende) not = PERAKENDE_ISLEM;
     else if (kalemler.length && not && (/\s[x×]\d+/i.test(not) || /@\d/.test(not))) {
@@ -1387,9 +1457,20 @@
     const mobilIkon = grupRows.some((r) => r.MobilKaynak)
       ? ' <span class="islem-mobil-ikon" title="Mobil">📱</span>'
       : '';
-    return `<li class="islem-kart${kalemler.length ? ' islem-kart-satis' : ''}${perakende ? ' islem-kart-perakende' : ''}">
+    const turOdemeIkon = odemeIkon && !veresiyeMi ? ` ${odemeIkon}` : '';
+    let notHtml = '';
+    if (not) {
+      if (perakende) {
+        notHtml = `<div class="islem-not islem-not-perakende"><span class="islem-perakende-rozet">${esc(not)}</span></div>`;
+      } else if (veresiyeMi) {
+        notHtml = `<div class="islem-not islem-not-veresiye">${odemeIkon}<span class="islem-veresiye-ad">${esc(not)}</span><span class="islem-veresiye-rozet">Veresiye</span></div>`;
+      } else {
+        notHtml = `<div class="islem-not">${esc(not)}</div>`;
+      }
+    }
+    return `<li class="islem-kart${kalemler.length ? ' islem-kart-satis' : ''}${perakende ? ' islem-kart-perakende' : ''}${kartOdemeCls}">
       <div class="islem-ust">
-        <span class="islem-tur ${turCls}">${tur}${mobilIkon}</span>
+        <span class="islem-tur ${turCls}">${tur}${turOdemeIkon}${mobilIkon}</span>
         <div class="islem-ust-sag">
           <span class="islem-tutar ${tutarCls}">${para(tutar)}</span>
           ${duzenleBtn}
@@ -1397,15 +1478,20 @@
         </div>
       </div>
       <div class="islem-alt">${esc(altParca.join(' · '))}</div>
-      ${not ? `<div class="islem-not${perakende ? ' islem-not-perakende' : ''}">${perakende ? `<span class="islem-perakende-rozet">${esc(not)}</span>` : esc(not)}</div>` : ''}
+      ${notHtml}
       ${kalemHtml}
     </li>`;
   }
 
   function gunlukIslemTurSinif(row) {
     const tur = String(row.TurEtiket || '').toLowerCase();
+    const odemeTip = gunlukOdemeTipNorm(row.Odeme);
     if (row.Yon === 'cikis') return 'islem-tur-gider';
     if (tur.includes('tahsilat') || tur.includes('ödeme') || tur.includes('odeme')) return 'islem-tur-tahsilat';
+    if (odemeTip === 'veresiye') return 'islem-tur-veresiye';
+    if (odemeTip === 'nakit') return 'islem-tur-nakit';
+    if (odemeTip === 'kart') return 'islem-tur-kart';
+    if (odemeTip === 'havale') return 'islem-tur-havale';
     return '';
   }
 
