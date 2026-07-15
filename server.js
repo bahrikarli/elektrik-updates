@@ -14,6 +14,22 @@ const { registerUpdateRoutes } = require('./routes/updates');
 const { registerBackupRoutes } = require('./routes/backups');
 require('./lib/env-yukle').envYukle();
 
+/**
+ * MSSQL DATETIME duvar saatidir (useUTC:false). Varsayılan Date.toJSON → toISOString (UTC+Z)
+ * arayüzde -3/+3 kaymasına yol açar. JSON'a yerel duvar saatini Z'siz yaz.
+ */
+(function sqlDatetimeJsonYerel() {
+  const pad = (n, w = 2) => String(n).padStart(w, '0');
+  Date.prototype.toJSON = function sqlDatetimeToJSON() {
+    if (Number.isNaN(this.getTime())) return null;
+    return (
+      `${this.getFullYear()}-${pad(this.getMonth() + 1)}-${pad(this.getDate())}` +
+      `T${pad(this.getHours())}:${pad(this.getMinutes())}:${pad(this.getSeconds())}` +
+      `.${pad(this.getMilliseconds(), 3)}`
+    );
+  };
+})();
+
 const app = express();
 const APP_ROOT = process.pkg ? path.dirname(process.execPath) : __dirname;
 const demoLisans = require('./lib/demo-lisans');

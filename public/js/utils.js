@@ -546,7 +546,9 @@ function gunlukMetinEsc(s) {
 }
 
 /**
- * MSSQL / API tarihleri: ISO+Z → tarayici yerel saat; timezone'suz "2025-05-16 15:00:00" → duvar saati.
+ * MSSQL DATETIME yerel duvar saatidir.
+ * - "2026-07-15T07:03:00" (Z yok) → olduğu gibi yerel
+ * - "...Z" / offset → gerçek UTC; tarayıcı saat dilimine göre gösterilir (TR: Istanbul)
  */
 function sqlTarihParse(val) {
   if (val == null || val === '') return null;
@@ -556,7 +558,7 @@ function sqlTarihParse(val) {
   const s = String(val).trim();
   if (!s) return null;
 
-  if (/[zZ]$/.test(s) || /[+-]\d{2}:\d{2}$/.test(s)) {
+  if (/[zZ]$/.test(s) || /[+-]\d{2}:?\d{2}$/.test(s)) {
     const d = new Date(s);
     return Number.isNaN(d.getTime()) ? null : d;
   }
