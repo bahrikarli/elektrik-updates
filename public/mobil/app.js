@@ -73,17 +73,15 @@
     return `${x.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺`;
   }
 
-  /** MSSQL DATETIME duvar saati; Z varsa UTC→yerel, yoksa olduğu gibi. */
+  /** MSSQL DATETIME: rakamları duvar saati kabul et (Z olsa da +3/-3 yok). */
   function sqlTarihParse(val) {
     if (val == null || val === '') return null;
     if (val instanceof Date) return Number.isNaN(val.getTime()) ? null : val;
     const s = String(val).trim();
     if (!s) return null;
-    if (/[zZ]$/.test(s) || /[+-]\d{2}:?\d{2}$/.test(s)) {
-      const d = new Date(s);
-      return Number.isNaN(d.getTime()) ? null : d;
-    }
-    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?)?/);
+    const m = s.match(
+      /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?)?(?:Z|[+-]\d{2}:?\d{2})?/i,
+    );
     if (m) {
       return new Date(
         Number(m[1]),
@@ -3043,6 +3041,7 @@
     const tutar = Number(h.Tutar) || 0;
     const tarih = tarihTrGoster(h.Tarih);
     const sinif = alimMi ? 'hareket-satis' : 'hareket-odeme';
+    const kayitID = Number(h.KayitID) || 0;
     let kalem = '';
     if (alimMi && Array.isArray(h.satirlar) && h.satirlar.length) {
       kalem = `<ul class="hareket-kalem-liste">${h.satirlar
@@ -3055,14 +3054,164 @@
         .join('')}</ul>`;
     }
     const odeme = h.OdemeSekli ? esc(h.OdemeSekli) : '';
+    const aksiyon =
+      kayitID > 0
+        ? `<div class="hareket-aksiyon">
+            <button type="button" class="hareket-duzenle-btn" data-ted-duzenle="${tur}" data-ted-id="${kayitID}" title="Düzenle" aria-label="Düzenle">✎</button>
+            <button type="button" class="hareket-sil-btn" data-ted-sil="${tur}" data-ted-id="${kayitID}" title="Sil" aria-label="Sil">✕</button>
+          </div>`
+        : '';
     return `<li class="hareket-item ${sinif}">
       <div class="hareket-ust">
         <span class="hareket-tur">${etiket}</span>
-        <span class="hareket-toplam-deger">${para(tutar)}</span>
+        <div class="hareket-ust-sag">
+          <span class="hareket-toplam-deger">${para(tutar)}</span>
+          ${aksiyon}
+        </div>
       </div>
       <div class="hareket-alt">${[odeme, tarih].filter(Boolean).join(' · ')}</div>
       ${kalem}
     </li>`;
+  }
+
+  async function tedarikciHareketSil(tur, kayitID) {
+    if (!detayTedarikciID || !kayitID) return;
+    const turRaw = String(tur || '').toLowerCase();
+    const mesaj =
+      turRaw === 'alim'
+        ? 'Bu mal alımı silinecek. Stok/cari/kasa geri alınır. Şifrenizi girin.'
+        : 'Bu ödeme silinecek. Cari ve kasa geri alınır. Şifrenizi girin.';
+    const sifre = await silmeSifreOnayla(mesaj);
+    if (!sifre) return;
+    if (!(await silmeSifreDogrula(sifre))) {
+      toast('Şifre hatalı');
+      return;
+    }
+    try {
+      const q = encodeURIComponent(aktifKullanici || 'Sistem');
+      const res = await apiFetch(
+        `/api/tedarikci/${detayTedarikciID}/hareket/${encodeURIComponent(turRaw)}/${kayitID}?kullanici=${q}`,
+        { method: 'DELETE' },
+      );
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok || payload.success === false) {
+        toast(payload.message || 'Silinemedi');
+        return;
+      }
+      toast(payload.message || 'Silindi');
+      const [tedRes, stokRes] = await Promise.all([apiFetch('/api/tedarikci'), apiFetch('/api/stok')]);
+      tedarikciCache = tedRes.ok ? await tedRes.json() : tedarikciCache;
+      if (stokRes.ok) {
+        stokCache = await stokRes.json();
+        stokCacheIndeksle();
+      }
+      await gunlukKasaYukle();
+      navKartOzetGuncelle();
+      await tedarikciCariAc(detayTedarikciID, true);
+    } catch (e) {
+      console.error(e);
+      toast('Bağlantı hatası');
+    }
+  }
+
+  async function tedarikciHareketDuzenleAc(tur, kayitID) {
+    if (!detayTedarikciID || !kayitID) return;
+    const tip = String(tur || '').toLowerCase();
+    try {
+      const res = await apiFetch(
+        `/api/tedarikci/${detayTedarikciID}/hareket/${encodeURIComponent(tip)}/${kayitID}/detay`,
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast(data.message || 'Hareket alınamadı');
+        return;
+      }
+      const h = data.hareket || {};
+      const detaylar = data.detaylar || [];
+      $('tedHrkKayitID').value = String(kayitID);
+      $('tedHrkTip').value = tip;
+      $('dlgTedHrkBaslik').textContent = tip === 'alim' ? 'Mal alım düzenle' : 'Ödeme düzenle';
+      $('tedHrkMeta').textContent = `${detayTedarikciData?.tedarikci?.Unvan || ''} · ${tarihTrGoster(h.Tarih)}`;
+      const alimAlani = $('tedHrkAlimAlani');
+      const odemeAlani = $('tedHrkOdemeAlani');
+      if (tip === 'alim') {
+        alimAlani.hidden = false;
+        odemeAlani.hidden = true;
+        const ul = $('tedHrkAlimListe');
+        const satirlar = detaylar.length
+          ? detaylar
+          : [{ SatirID: 0, UrunAdi: 'Mal alım', Miktar: 1, SatirTutar: Number(h.Tutar) || 0 }];
+        ul.innerHTML = satirlar
+          .map(
+            (d) => `<li class="ted-alim-satir" data-satir-id="${Number(d.SatirID || 0)}">
+              <div class="sepet-satir-ust"><strong>${esc(d.UrunAdi || '—')}</strong></div>
+              <div class="sepet-satir-alt">
+                <label>Adet <input type="number" min="1" step="1" class="ted-hrk-miktar" value="${Number(d.Miktar || 1)}"></label>
+                <label>Tutar <input type="number" min="0.01" step="0.01" class="ted-hrk-tutar" value="${Number(d.SatirTutar || 0).toFixed(2)}"></label>
+              </div>
+            </li>`,
+          )
+          .join('');
+      } else {
+        alimAlani.hidden = true;
+        odemeAlani.hidden = false;
+        $('tedHrkOdemeTutar').value = Number(h.Tutar || 0).toFixed(2);
+        $('tedHrkOdemeSekli').value = h.OdemeSekli || 'Nakit';
+      }
+      $('dlgTedarikHareketDuzenle').showModal();
+    } catch (e) {
+      console.error(e);
+      toast('Bağlantı hatası');
+    }
+  }
+
+  async function tedarikciHareketDuzenleKaydet(ev) {
+    ev.preventDefault();
+    if (!detayTedarikciID) return;
+    const kayitID = parseInt($('tedHrkKayitID').value, 10);
+    const tip = ($('tedHrkTip').value || '').toLowerCase();
+    if (!Number.isInteger(kayitID) || kayitID < 1) return;
+    const body = { kullanici: aktifKullanici || 'Sistem' };
+    if (tip === 'alim') {
+      const kalemler = [];
+      $('tedHrkAlimListe')?.querySelectorAll('li[data-satir-id]').forEach((li) => {
+        kalemler.push({
+          satirID: parseInt(li.getAttribute('data-satir-id') || '0', 10) || 0,
+          miktar: Number(li.querySelector('.ted-hrk-miktar')?.value || 0),
+          satirTutar: Number(li.querySelector('.ted-hrk-tutar')?.value || 0),
+        });
+      });
+      body.kalemler = kalemler;
+    } else if (tip === 'odeme') {
+      body.tutar = Number($('tedHrkOdemeTutar').value || 0);
+      body.odemeSekli = $('tedHrkOdemeSekli').value || 'Nakit';
+    } else return;
+
+    try {
+      const res = await apiFetch(
+        `/api/tedarikci/${detayTedarikciID}/hareket/${encodeURIComponent(tip)}/${kayitID}/duzenle`,
+        { method: 'PATCH', body: JSON.stringify(body) },
+      );
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok || payload.success === false) {
+        toast(payload.message || 'Düzenleme kaydedilemedi');
+        return;
+      }
+      $('dlgTedarikHareketDuzenle').close();
+      toast(payload.message || 'Güncellendi');
+      const [tedRes, stokRes] = await Promise.all([apiFetch('/api/tedarikci'), apiFetch('/api/stok')]);
+      tedarikciCache = tedRes.ok ? await tedRes.json() : tedarikciCache;
+      if (stokRes.ok) {
+        stokCache = await stokRes.json();
+        stokCacheIndeksle();
+      }
+      await gunlukKasaYukle();
+      navKartOzetGuncelle();
+      await tedarikciCariAc(detayTedarikciID, true);
+    } catch (e) {
+      console.error(e);
+      toast('Bağlantı hatası');
+    }
   }
 
   function tedarikciEkleDialogAc() {
@@ -3338,6 +3487,18 @@
     $('formTedarikciEkle')?.addEventListener('submit', tedarikciEkleKaydet);
     $('formTedarikOdeme')?.addEventListener('submit', tedarikOdemeKaydet);
     $('formTedarikAlim')?.addEventListener('submit', tedAlimKaydet);
+    $('formTedarikHareketDuzenle')?.addEventListener('submit', tedarikciHareketDuzenleKaydet);
+    $('tedarikciHareketListe')?.addEventListener('click', (e) => {
+      const sil = e.target.closest('[data-ted-sil]');
+      if (sil) {
+        tedarikciHareketSil(sil.getAttribute('data-ted-sil'), Number(sil.getAttribute('data-ted-id')));
+        return;
+      }
+      const duz = e.target.closest('[data-ted-duzenle]');
+      if (duz) {
+        tedarikciHareketDuzenleAc(duz.getAttribute('data-ted-duzenle'), Number(duz.getAttribute('data-ted-id')));
+      }
+    });
     $('tedAlimOdemeVar')?.addEventListener('change', () => {
       const blok = $('tedAlimOdemeBlok');
       if (blok) blok.hidden = !$('tedAlimOdemeVar').checked;

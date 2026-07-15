@@ -30,6 +30,23 @@ require('./lib/env-yukle').envYukle();
   };
 })();
 
+/** MSSQL DATETIME → Z'siz duvar saati (SQL CONVERT / ham rakam). */
+function sqlDatetimeMetin(val) {
+  if (val == null || val === '') return null;
+  if (typeof val === 'string') {
+    const s = val.trim();
+    const m = s.match(/^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}(?::\d{2})?)/);
+    if (m) return `${m[1]}T${m[2].length === 5 ? `${m[2]}:00` : m[2]}`;
+    return s;
+  }
+  if (!(val instanceof Date) || Number.isNaN(val.getTime())) return null;
+  const pad = (n, w = 2) => String(n).padStart(w, '0');
+  return (
+    `${val.getFullYear()}-${pad(val.getMonth() + 1)}-${pad(val.getDate())}` +
+    `T${pad(val.getHours())}:${pad(val.getMinutes())}:${pad(val.getSeconds())}`
+  );
+}
+
 const app = express();
 const APP_ROOT = process.pkg ? path.dirname(process.execPath) : __dirname;
 const demoLisans = require('./lib/demo-lisans');
@@ -4182,6 +4199,8 @@ function gunlukMalAlimOdemeSatirOlustur(ref, tutar, odeme, veresiyeMi) {
   return {
     LogID: ref.LogID,
     GrupLogID: ref.GrupLogID || ref.LogID,
+    AlimID: ref.AlimID || ref.LogID,
+    TedarikciID: ref.TedarikciID || 0,
     Tarih: ref.Tarih,
     KullaniciAdi: ref.KullaniciAdi,
     IslemTipi: ref.IslemTipi,
@@ -4221,7 +4240,6 @@ function gunlukIslemMalAlimOdemeSatirlariEkle(islemler) {
     if (!items.length) continue;
     items.sort((a, b) => (Number(a.KalemSira) || 0) - (Number(b.KalemSira) || 0));
     const ref = items[0];
-    cikti.push(...items);
 
     const mal = aciklamadanTedarikMalAlim(ref.Aciklama);
     const toplam =
@@ -4234,11 +4252,19 @@ function gunlukIslemMalAlimOdemeSatirlariEkle(islemler) {
     let odeme = ref.Odeme || aciklamadanOdeme(ref.Aciklama) || '—';
     if (kasa <= 0 && kalan > 0) odeme = 'Veresiye';
 
+    // Tam veresiye: ayrı veresiye satırı yok (ödeme yoksa tekrar eden satır gereksiz)
+    if (kasa <= 0.009 && kalan > 0.009) {
+      items[0].Odeme = 'Veresiye';
+    }
+
+    cikti.push(...items);
+
     if (kasa > 0.009) {
       cikti.push(gunlukMalAlimOdemeSatirOlustur(ref, kasa, odeme, false));
-    }
-    if (kalan > 0.009) {
-      cikti.push(gunlukMalAlimOdemeSatirOlustur(ref, kalan, 'Veresiye', true));
+      // Kısmi ödeme sonrası kalan borç için veresiye satırı
+      if (kalan > 0.009) {
+        cikti.push(gunlukMalAlimOdemeSatirOlustur(ref, kalan, 'Veresiye', true));
+      }
     }
   }
 
@@ -5528,7 +5554,7 @@ async function gunlukTedarikciIslemleriniEkle(pool, basTrim, bitTrim, ozet, isle
         .input('bas', sql.NVarChar(10), basTrim)
         .input('bit', sql.NVarChar(10), bitTrim)
         .query(`
-          SELECT a.AlimID, a.Tarih, a.ToplamTutar, a.OdemeSekli, a.Kullanici, t.Unvan
+          SELECT a.AlimID, a.TedarikciID, CONVERT(varchar(19), a.Tarih, 126) AS Tarih, a.ToplamTutar, a.OdemeSekli, a.Kullanici, t.Unvan
           FROM TedarikAlim a
           INNER JOIN Tedarikciler t ON t.TedarikciID = a.TedarikciID
           WHERE CAST(a.Tarih AS DATE) >= CAST(@bas AS DATE)
@@ -5537,6 +5563,7 @@ async function gunlukTedarikciIslemleriniEkle(pool, basTrim, bitTrim, ozet, isle
         `);
       for (const a of alimRs.recordset || []) {
         const alimID = a.AlimID;
+        const tedarikciID = Number(a.TedarikciID) || 0;
         const toplam = Number(a.ToplamTutar || 0);
         const odenen = await gunlukTedarikAlimOdenenTutar(pool, alimID);
         const kalan = Math.max(0, Math.round((toplam - odenen) * 100) / 100);
@@ -5567,6 +5594,7 @@ async function gunlukTedarikciIslemleriniEkle(pool, basTrim, bitTrim, ozet, isle
           LogID: alimID,
           GrupLogID: alimID,
           AlimID: alimID,
+          TedarikciID: tedarikciID,
           Tarih: a.Tarih,
           KullaniciAdi: a.Kullanici || '',
           IslemTipi: 'Tedarik Mal Alım',
@@ -5594,7 +5622,7 @@ async function gunlukTedarikciIslemleriniEkle(pool, basTrim, bitTrim, ozet, isle
         .input('bas', sql.NVarChar(10), basTrim)
         .input('bit', sql.NVarChar(10), bitTrim)
         .query(`
-          SELECT o.OdemeID, o.Tutar, o.OdemeSekli, o.Kullanici, o.Aciklama, o.Tarih, t.Unvan
+          SELECT o.OdemeID, o.TedarikciID, o.Tutar, o.OdemeSekli, o.Kullanici, o.Aciklama, CONVERT(varchar(19), o.Tarih, 126) AS Tarih, t.Unvan
           FROM TedarikciOdeme o
           INNER JOIN Tedarikciler t ON t.TedarikciID = o.TedarikciID
           WHERE CAST(o.Tarih AS DATE) >= CAST(@bas AS DATE)
@@ -5615,11 +5643,13 @@ async function gunlukTedarikciIslemleriniEkle(pool, basTrim, bitTrim, ozet, isle
           ozet.giderTedarikciKasa += tutar;
         }
         const unvan = String(o.Unvan || '').trim() || 'Tedarikçi';
+        const tedarikciID = Number(o.TedarikciID) || 0;
         ozet.islemAdedi += 1;
         const aciklama = o.Aciklama || `${unvan}: ${tutar}₺ (${odeme})`;
         islemler.push({
           LogID: o.OdemeID,
           GrupLogID: o.OdemeID,
+          TedarikciID: tedarikciID,
           Tarih: o.Tarih,
           KullaniciAdi: o.Kullanici || '',
           IslemTipi: 'Tedarikçi Ödeme',
@@ -6936,7 +6966,7 @@ app.get('/api/tedarikci/:id/hareketler', async (req, res) => {
     const alimlar = await pool.request()
       .input('ID', sql.Int, id)
       .query(`
-        SELECT a.AlimID AS KayitID, a.Tarih, a.ToplamTutar AS Tutar, a.OdemeSekli, a.StogaAktar, a.Aciklama, a.Kullanici,
+        SELECT a.AlimID AS KayitID, CONVERT(varchar(19), a.Tarih, 126) AS Tarih, a.ToplamTutar AS Tutar, a.OdemeSekli, a.StogaAktar, a.Aciklama, a.Kullanici,
                ISNULL(da.UrunDetay, N'') AS UrunDetay,
                N'alim' AS Tur
         FROM TedarikAlim a
@@ -6971,7 +7001,7 @@ app.get('/api/tedarikci/:id/hareketler', async (req, res) => {
     const odemeler = await pool.request()
       .input('ID', sql.Int, id)
       .query(`
-        SELECT OdemeID AS KayitID, Tarih, Tutar, OdemeSekli, Aciklama, Kullanici, N'' AS UrunDetay,
+        SELECT OdemeID AS KayitID, CONVERT(varchar(19), Tarih, 126) AS Tarih, Tutar, OdemeSekli, Aciklama, Kullanici, N'' AS UrunDetay,
                N'odeme' AS Tur
         FROM TedarikciOdeme WHERE TedarikciID = @ID
       `);
@@ -7226,7 +7256,7 @@ app.get('/api/tedarikci/:tedarikciID/hareket/:tur/:kayitID/detay', async (req, r
         .input('TedarikciID', sql.Int, tedarikciID)
         .input('AlimID', sql.Int, kayitID)
         .query(`
-          SELECT AlimID AS KayitID, TedarikciID, Tarih, ToplamTutar AS Tutar, OdemeSekli, StogaAktar, Aciklama, Kullanici,
+          SELECT AlimID AS KayitID, TedarikciID, CONVERT(varchar(19), Tarih, 126) AS Tarih, ToplamTutar AS Tutar, OdemeSekli, StogaAktar, Aciklama, Kullanici,
                  N'alim' AS Tur
           FROM TedarikAlim
           WHERE TedarikciID = @TedarikciID AND AlimID = @AlimID
@@ -7248,7 +7278,7 @@ app.get('/api/tedarikci/:tedarikciID/hareket/:tur/:kayitID/detay', async (req, r
       .input('TedarikciID', sql.Int, tedarikciID)
       .input('OdemeID', sql.Int, kayitID)
       .query(`
-        SELECT OdemeID AS KayitID, TedarikciID, Tarih, Tutar, OdemeSekli, Aciklama, Kullanici, N'odeme' AS Tur
+        SELECT OdemeID AS KayitID, TedarikciID, CONVERT(varchar(19), Tarih, 126) AS Tarih, Tutar, OdemeSekli, Aciklama, Kullanici, N'odeme' AS Tur
         FROM TedarikciOdeme
         WHERE TedarikciID = @TedarikciID AND OdemeID = @OdemeID
       `);
@@ -7517,9 +7547,9 @@ app.post('/api/tedarikci/alim', async (req, res) => {
       rqAlim.input('Kullanici', sql.NVarChar(50), kullanici || 'Sistem');
       rqAlim.input('Aciklama', sql.NVarChar(500), aciklama ? String(aciklama).substring(0, 500) : null);
       const insAlim = await rqAlim.query(`
-        INSERT INTO TedarikAlim (TedarikciID, ToplamTutar, OdemeSekli, StogaAktar, Kullanici, Aciklama)
+        INSERT INTO TedarikAlim (TedarikciID, ToplamTutar, OdemeSekli, StogaAktar, Kullanici, Aciklama, Tarih)
         OUTPUT INSERTED.AlimID
-        VALUES (@TedarikciID, @ToplamTutar, @OdemeSekli, @StogaAktar, @Kullanici, @Aciklama)
+        VALUES (@TedarikciID, @ToplamTutar, @OdemeSekli, @StogaAktar, @Kullanici, @Aciklama, SYSDATETIME())
       `);
       alimID = insAlim.recordset[0].AlimID;
 
@@ -7586,8 +7616,8 @@ app.post('/api/tedarikci/alim', async (req, res) => {
           .input('Kullanici', sql.NVarChar(50), kullanici || 'Sistem')
           .input('Aciklama', sql.NVarChar(255), `Mal alım ödemesi (Alım #${alimID})`)
           .query(`
-            INSERT INTO TedarikciOdeme (TedarikciID, Tutar, OdemeSekli, Kullanici, Aciklama)
-            VALUES (@TedarikciID, @Tutar, @OdemeSekli, @Kullanici, @Aciklama)
+            INSERT INTO TedarikciOdeme (TedarikciID, Tutar, OdemeSekli, Kullanici, Aciklama, Tarih)
+            VALUES (@TedarikciID, @Tutar, @OdemeSekli, @Kullanici, @Aciklama, SYSDATETIME())
           `);
         await new sql.Request(transaction)
           .input('Tutar', sql.Decimal(18, 2), odenen)
@@ -7659,8 +7689,8 @@ app.post('/api/tedarikci/odeme', async (req, res) => {
       rqO.input('Kullanici', sql.NVarChar(50), kullanici || 'Sistem');
       rqO.input('Aciklama', sql.NVarChar(255), aciklama ? String(aciklama).substring(0, 255) : null);
       await rqO.query(`
-        INSERT INTO TedarikciOdeme (TedarikciID, Tutar, OdemeSekli, Kullanici, Aciklama)
-        VALUES (@TedarikciID, @Tutar, @OdemeSekli, @Kullanici, @Aciklama)
+        INSERT INTO TedarikciOdeme (TedarikciID, Tutar, OdemeSekli, Kullanici, Aciklama, Tarih)
+        VALUES (@TedarikciID, @Tutar, @OdemeSekli, @Kullanici, @Aciklama, SYSDATETIME())
       `);
 
       const rqB = new sql.Request(transaction);
@@ -7749,9 +7779,9 @@ app.post('/api/genel-gider', async (req, res) => {
       rqIns.input('Aciklama', sql.NVarChar(500), (aciklama || '').trim().substring(0, 500) || null);
       rqIns.input('Kullanici', sql.NVarChar(50), (kullanici || 'Sistem').substring(0, 50));
       const insResult = await rqIns.query(`
-        INSERT INTO GenelGider (Tutar, OdemeSekli, Kategori, Aciklama, Kullanici)
+        INSERT INTO GenelGider (Tutar, OdemeSekli, Kategori, Aciklama, Kullanici, Tarih)
         OUTPUT INSERTED.GiderID
-        VALUES (@Tutar, @OdemeSekli, @Kategori, @Aciklama, @Kullanici)
+        VALUES (@Tutar, @OdemeSekli, @Kategori, @Aciklama, @Kullanici, SYSDATETIME())
       `);
       const gid = insResult.recordset[0]?.GiderID;
 

@@ -855,6 +855,12 @@ body { overflow: hidden; }
   -webkit-overflow-scrolling: touch;
 }
 
+.hareket-aksiyon {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
 .hareket-sil-btn {
   flex-shrink: 0;
   width: 30px;

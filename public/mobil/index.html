@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="mobil.css?v=37">
+  <link rel="stylesheet" href="mobil.css?v=39">
 </head>
 <body>
   <div id="view-login" class="view view-active">
@@ -529,6 +529,32 @@
     </form>
   </dialog>
 
+  <dialog id="dlgTedarikHareketDuzenle" class="mobil-dialog mobil-dialog-scroll">
+    <form id="formTedarikHareketDuzenle" method="dialog" class="dialog-body">
+      <h2 class="dialog-title" id="dlgTedHrkBaslik">İşlem düzenle</h2>
+      <input type="hidden" id="tedHrkKayitID" value="">
+      <input type="hidden" id="tedHrkTip" value="">
+      <p id="tedHrkMeta" class="dialog-alt"></p>
+      <div id="tedHrkAlimAlani" hidden>
+        <ul id="tedHrkAlimListe" class="sepet-liste"></ul>
+      </div>
+      <div id="tedHrkOdemeAlani" hidden>
+        <label class="field-label" for="tedHrkOdemeTutar">Tutar (₺)</label>
+        <input id="tedHrkOdemeTutar" class="field-input" type="number" min="0.01" step="0.01" inputmode="decimal">
+        <label class="field-label">Ödeme şekli</label>
+        <select id="tedHrkOdemeSekli" class="field-input">
+          <option value="Nakit">Nakit</option>
+          <option value="Kart">Kart</option>
+          <option value="Havale">Havale</option>
+        </select>
+      </div>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" data-dialog-close>İptal</button>
+        <button type="submit" class="btn btn-primary">Kaydet</button>
+      </div>
+    </form>
+  </dialog>
+
   <div id="barkodTarayici" class="barkod-tarayici" hidden>
     <div class="barkod-tarayici-ust">
       <strong id="barkodTarayiciBaslik">Barkod okut</strong>
@@ -547,6 +573,6 @@
 
   <script src="vendor/html5-qrcode.min.js"></script>
   <script src="vendor/html2canvas.min.js"></script>
-  <script src="app.js?v=53"></script>
+  <script src="app.js?v=55"></script>
 </body>
 </html>

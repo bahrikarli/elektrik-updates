@@ -4418,7 +4418,39 @@ function gunlukGrupOdemeBul(items) {
   for (const r of items) {
     if (r.Odeme === 'Veresiye') return 'Veresiye';
   }
+  for (const r of items) {
+    if (r.Odeme && r.Odeme !== '—') return r.Odeme;
+  }
   return '—';
+}
+
+function gunlukOdemeTipNorm(odeme) {
+  const o = String(odeme || '')
+    .trim()
+    .toLowerCase()
+    .replace(/ı/g, 'i');
+  if (!o || o === '—' || o === '-') return '';
+  if (o.includes('veresiye')) return 'veresiye';
+  if (o.includes('nakit')) return 'nakit';
+  if (o.includes('kart') || o.includes('pos')) return 'kart';
+  if (o.includes('havale') || o.includes('eft')) return 'havale';
+  return '';
+}
+
+function gunlukOdemeIkonHtml(tip) {
+  if (tip === 'nakit') {
+    return '<span class="gunluk-odeme-ikon" title="Nakit" aria-label="Nakit">💵</span>';
+  }
+  if (tip === 'kart') {
+    return '<span class="gunluk-odeme-ikon" title="Kart" aria-label="Kart">💳</span>';
+  }
+  if (tip === 'havale') {
+    return '<span class="gunluk-odeme-ikon" title="Havale" aria-label="Havale">🏦</span>';
+  }
+  if (tip === 'veresiye') {
+    return '<span class="gunluk-odeme-ikon" title="Veresiye" aria-label="Veresiye">📒</span>';
+  }
+  return '';
 }
 
 function gunlukIslemGruplariIsaretle(liste) {
@@ -4453,7 +4485,7 @@ function gunlukIslemGruplariIsaretle(liste) {
       row.GunlukGrupIc = coklu && i > 0 && i < items.length - 1;
       row.GunlukTahsilatOncesi =
         coklu && i < items.length - 1 && gunlukIslemTahsilatSatirMi(items[i + 1]);
-      if (tahsilat && grupOdeme != null) row.GunlukGrupOdeme = grupOdeme;
+      if (grupOdeme != null && grupOdeme !== '—') row.GunlukGrupOdeme = grupOdeme;
     });
   }
   return liste;
@@ -4477,10 +4509,30 @@ function gunlukIslemMusteriHucre(row, metin) {
   }
   const cls = row.SatirTur === 'satis_kalem' ? 'gunluk-kalem-musteri' : 'gunluk-aciklama-hucre';
   const temiz = mobilOnekTemizle(metin);
-  const icerik =
-    gunlukPerakendeSatirMi(row) || perakendeEtiketMi(temiz)
-      ? `<span class="gunluk-perakende-etiket">${PERAKENDE_ISLEM}</span>`
-      : gunlukMetinEsc(temiz);
+  if (gunlukPerakendeSatirMi(row) || perakendeEtiketMi(temiz)) {
+    return `<td class="${cls}"><span class="gunluk-perakende-etiket">${PERAKENDE_ISLEM}</span></td>`;
+  }
+  const tedarikciMi =
+    row.Kaynak === 'mal_alim' ||
+    row.Kaynak === 'mal_alim_odeme' ||
+    row.Kaynak === 'tedarikci_odeme' ||
+    row.SatirTur === 'mal_alim_kalem' ||
+    row.SatirTur === 'mal_alim_odeme' ||
+    Number(row.TedarikciID) > 0;
+  const musteriMi =
+    !tedarikciMi &&
+    (Number(row.MusteriID) > 0 ||
+      row.Kaynak === 'musteri_satis' ||
+      row.Kaynak === 'musteri_tahsilat' ||
+      row.Kaynak === 'musteri_odeme' ||
+      row.Kaynak === 'satis_tahsilat');
+  const ad = gunlukMetinEsc(temiz);
+  let icerik = ad;
+  if (tedarikciMi && temiz) {
+    icerik = `<span class="gunluk-kisi-ikon" aria-hidden="true">🚚</span><span class="gunluk-tedarikci-ad">${ad}</span>`;
+  } else if (musteriMi && temiz) {
+    icerik = `<span class="gunluk-kisi-ikon" aria-hidden="true">👤</span><span class="gunluk-musteri-ad">${ad}</span>`;
+  }
   return `<td class="${cls}">${icerik}</td>`;
 }
 
@@ -4490,6 +4542,10 @@ function gunlukIslemTurEtiketMetin(row, turEtiket) {
     if (od === 'Veresiye') return 'Veresiye';
     if (od && od !== '—') return `Ödeme — ${od}`;
     return turEtiket || 'Ödeme';
+  }
+  if ((row.SatirTur || '') === 'mal_alim_kalem') {
+    const od = row.GunlukGrupOdeme != null ? row.GunlukGrupOdeme : row.Odeme;
+    if (od === 'Veresiye') return 'Mal alım — Veresiye';
   }
   if (gunlukIslemTahsilatSatirMi(row) && !gunlukIslemMalAlimOdemeSatirMi(row)) {
     const od = row.GunlukGrupOdeme != null ? row.GunlukGrupOdeme : row.Odeme;
@@ -4529,7 +4585,16 @@ function gunlukIslemTurHucre(row, turBadge, turEtiket, mobilIkon, ek = '', alt =
   const etiket = gunlukIslemTurEtiketMetin(row, turEtiket);
   const tahsilatTur = gunlukIslemTahsilatSatirMi(row) ? ' gunluk-tur-tahsilat' : '';
   const nowrap = alt ? '' : ' text-nowrap';
-  return `<td class="gunluk-tur-hucre${nowrap}${tahsilatTur}">${ek}<span class="badge ${turBadge}">${gunlukMetinEsc(etiket)}</span>${mobilIkon}${alt}</td>`;
+  const odTip = gunlukOdemeTipNorm(
+    row.GunlukGrupOdeme != null && gunlukIslemTahsilatSatirMi(row)
+      ? row.GunlukGrupOdeme
+      : row.Odeme,
+  );
+  const odemeIkon =
+    gunlukIslemTahsilatSatirMi(row) || row.SatirTur === 'mal_alim_kalem' || row.Kaynak === 'tedarikci_odeme'
+      ? gunlukOdemeIkonHtml(odTip)
+      : '';
+  return `<td class="gunluk-tur-hucre${nowrap}${tahsilatTur}">${ek}<span class="badge ${turBadge}">${gunlukMetinEsc(etiket)}</span>${odemeIkon}${mobilIkon}${alt}</td>`;
 }
 
 function gunlukIslemSatirSiniflari(row, ek = '') {
@@ -4540,6 +4605,22 @@ function gunlukIslemSatirSiniflari(row, ek = '') {
   if (row.GunlukTahsilatOncesi) cls += ' gunluk-tahsilat-oncesi';
   if (row.GunlukGrupSon) cls += ' gunluk-islem-grup-son';
   if (row.GunlukGrupIc) cls += ' gunluk-islem-grup-ic';
+
+  const odTip = gunlukOdemeTipNorm(row.GunlukGrupOdeme || row.Odeme);
+  const malAlim =
+    row.Kaynak === 'mal_alim' ||
+    row.Kaynak === 'mal_alim_odeme' ||
+    row.Kaynak === 'tedarikci_odeme' ||
+    row.SatirTur === 'mal_alim_kalem' ||
+    row.SatirTur === 'mal_alim_odeme';
+  const yonCikis = row.Yon === 'cikis' || malAlim;
+  if (odTip === 'veresiye') cls += ' gunluk-satir-veresiye';
+  else if (odTip === 'nakit' || odTip === 'kart' || odTip === 'havale') {
+    cls += yonCikis ? ' gunluk-satir-kasa-cikis' : ' gunluk-satir-odendi';
+  }
+  if (malAlim && (row.SatirTur === 'mal_alim_kalem' || row.Kaynak === 'mal_alim')) {
+    cls += ' gunluk-satir-mal-alim';
+  }
   return cls;
 }
 
@@ -4635,15 +4716,22 @@ async function gunlukIslemleriYukle() {
         let tutClass = yon === 'cikis' ? 'text-danger' : 'text-dark';
         if (satisSatir) tutClass = 'text-danger';
         else if (malAlimKalem) tutClass = 'text-danger';
-        else if (tahsilatSatir) tutClass = 'text-success';
+        else if (tahsilatSatir) {
+          const odTip = gunlukOdemeTipNorm(row.GunlukGrupOdeme || row.Odeme);
+          tutClass = odTip === 'veresiye' ? 'gunluk-tutar-veresiye' : 'text-success';
+        }
 
         const detayGoster =
           row.LogID &&
           !String(row.IslemTipi || '').toLowerCase().includes('iptal') &&
           !tahsilatSatir &&
           (!kalemSatir || Number(row.KalemSira) === 0) &&
-          ['satis', 'kasa', 'musteri_satis', 'mal_alim'].includes(
-            kaynak === 'mal_alim' || malAlimKalem ? 'mal_alim' : kaynak
+          ['satis', 'kasa', 'musteri_satis', 'mal_alim', 'tedarikci_odeme'].includes(
+            kaynak === 'mal_alim' || malAlimKalem
+              ? 'mal_alim'
+              : kaynak === 'tedarikci_odeme'
+                ? 'tedarikci_odeme'
+                : kaynak
           );
         const perakendeAksiyon = gunlukPerakendeAksiyonSatirMi(row);
         let detayBtn = '<span class="text-muted small">—</span>';
@@ -4658,9 +4746,18 @@ async function gunlukIslemleriYukle() {
               </button>
             </div>`;
         } else if (detayGoster) {
-          detayBtn = `<button type="button" class="btn btn-sm btn-outline-secondary" onclick="gunlukIslemDetayAc(${Number(row.LogID)}, '${String(kaynak).replace(/'/g, "\\'")}', ${Number(row.HareketID || row.LogID)})" title="Detay">
+          const tid = Number(row.TedarikciID) || 0;
+          const tedarikciDetay =
+            kaynak === 'mal_alim' || malAlimKalem || kaynak === 'tedarikci_odeme';
+          if (tedarikciDetay && tid > 0) {
+            detayBtn = `<button type="button" class="btn btn-sm btn-outline-secondary" onclick="gunlukIslemTedarikciCarisineGit(${tid})" title="Tedarikçi cari">
                 <i class="fa-solid fa-circle-info"></i>
               </button>`;
+          } else if (!tedarikciDetay) {
+            detayBtn = `<button type="button" class="btn btn-sm btn-outline-secondary" onclick="gunlukIslemDetayAc(${Number(row.LogID)}, '${String(kaynak).replace(/'/g, "\\'")}', ${Number(row.HareketID || row.LogID)})" title="Detay">
+                <i class="fa-solid fa-circle-info"></i>
+              </button>`;
+          }
         }
 
         const faturaAlt = '';
@@ -4764,9 +4861,23 @@ function gunlukIslemDetaySifreOdakla() {
   }
 }
 
+async function gunlukIslemTedarikciCarisineGit(tedarikciID) {
+  const tid = Number(tedarikciID);
+  if (!Number.isInteger(tid) || tid < 1) {
+    alert('Tedarikçi bilgisi bulunamadı.');
+    return;
+  }
+  await gunlukIslemModalGeciciKapat();
+  await tedarikciCariModalAc(tid);
+}
+
 async function gunlukIslemDetayAc(logID, kaynak, hareketID) {
   const id = parseInt(logID, 10);
   if (!Number.isInteger(id) || id < 1) return;
+  const k = String(kaynak || '').trim();
+  if (k === 'mal_alim' || k === 'mal_alim_kalem' || k === 'mal_alim_odeme' || k === 'tedarikci_odeme') {
+    return;
+  }
   gunlukAktifLogID = id;
   const uyari = document.getElementById('gidIptalUyari');
   const iptalBlok = document.getElementById('gidIptalBlok');

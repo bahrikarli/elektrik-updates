@@ -271,6 +271,98 @@
         .ozet-rozet-tikla { cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease; }
         .ozet-rozet-tikla:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important; }
         .gunluk-ozet-kutu { border-radius: 12px; padding: 0.65rem 0.85rem; font-size: 0.9rem; }
+        #gunlukIslemModal .modal-dialog {
+            max-width: min(96vw, 1480px);
+            width: 96vw;
+            height: calc(100vh - 1.25rem);
+            margin: 0.6rem auto;
+        }
+        #gunlukIslemModal .modal-content {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        #gunlukIslemModal .modal-body {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 0.65rem;
+        }
+        #gunlukIslemModal .gunluk-islem-govde {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.65rem;
+        }
+        @media (min-width: 992px) {
+            #gunlukIslemModal .gunluk-islem-govde {
+                flex-direction: row;
+                align-items: stretch;
+            }
+        }
+        #gunlukIslemModal .gunluk-ozet-yan {
+            flex: 0 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.45rem;
+            align-content: start;
+            overflow-x: auto;
+            overflow-y: auto;
+            padding-bottom: 0.15rem;
+            -webkit-overflow-scrolling: touch;
+        }
+        @media (min-width: 992px) {
+            #gunlukIslemModal .gunluk-ozet-yan {
+                width: 22.5rem;
+                flex: 0 0 22.5rem;
+                overflow-x: hidden;
+                padding-bottom: 0;
+            }
+        }
+        #gunlukIslemModal .gunluk-ozet-sutun {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            min-width: 0;
+        }
+        #gunlukIslemModal .gunluk-ozet-yan .gunluk-ozet-kutu {
+            min-width: 0;
+            width: 100%;
+            padding: 0.45rem 0.55rem;
+            text-align: left;
+        }
+        #gunlukIslemModal .gunluk-ozet-yan .gunluk-ozet-baslik {
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            color: #64748b;
+            padding: 0.15rem 0.1rem 0.05rem;
+            flex: 0 0 auto;
+        }
+        #gunlukIslemModal .gunluk-ozet-yan .gunluk-ozet-alt {
+            font-size: 0.68rem;
+            color: #64748b;
+            line-height: 1.25;
+            padding: 0.15rem 0.1rem 0.35rem;
+        }
+        #gunlukIslemModal .gunluk-liste-yan {
+            flex: 1 1 auto;
+            min-width: 0;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        #gunlukIslemModal .gunluk-islem-tablo-wrap {
+            flex: 1 1 auto;
+            min-height: 0;
+            max-height: none !important;
+            overflow: auto;
+            height: 100%;
+        }
         .gunluk-islem-tablo-wrap { box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06); }
         #gunlukIslemTablo thead th {
             font-size: 0.72rem;
@@ -291,6 +383,58 @@
             background: #fef9c3;
             color: #713f12;
             border: 1px solid #fde047;
+        }
+        #gunlukIslemTablo .gunluk-kisi-ikon {
+            margin-right: 0.3rem;
+            font-size: 0.9em;
+            line-height: 1;
+            vertical-align: -0.05em;
+        }
+        #gunlukIslemTablo .gunluk-musteri-ad {
+            font-weight: 700;
+            color: #1565c0;
+            letter-spacing: 0.01em;
+        }
+        #gunlukIslemTablo .gunluk-tedarikci-ad {
+            font-weight: 700;
+            color: #0d47a1;
+            letter-spacing: 0.01em;
+        }
+        #gunlukIslemTablo .gunluk-odeme-ikon {
+            margin-left: 0.3rem;
+            font-size: 0.95em;
+            line-height: 1;
+            vertical-align: middle;
+        }
+        #gunlukIslemTablo .gunluk-tutar-veresiye {
+            color: #e65100 !important;
+            font-weight: 700;
+        }
+        #gunlukIslemTablo tr.gunluk-satir-mal-alim td:first-child {
+            box-shadow: inset 3px 0 0 #f9a825;
+        }
+        #gunlukIslemTablo tr.gunluk-satir-veresiye td:first-child {
+            box-shadow: inset 3px 0 0 #ff9800;
+        }
+        #gunlukIslemTablo tr.gunluk-satir-odendi td:first-child {
+            box-shadow: inset 3px 0 0 #43a047;
+        }
+        #gunlukIslemTablo tr.gunluk-satir-kasa-cikis td:first-child {
+            box-shadow: inset 3px 0 0 #ef5350;
+        }
+        /* Günlük: satır fon boyası yok — anlam şerit / rozet / yazı ile */
+        #gunlukIslemTablo tr.gunluk-grup-tahsilat td,
+        #gunlukIslemTablo tr.gunluk-tahsilat-satir td,
+        #gunlukIslemTablo tr.gunluk-satir-veresiye td,
+        #gunlukIslemTablo tr.gunluk-satir-odendi td,
+        #gunlukIslemTablo tr.gunluk-satir-kasa-cikis td,
+        #gunlukIslemTablo tr.gunluk-satir-mal-alim td {
+            background: transparent !important;
+        }
+        #gunlukIslemTablo tr.gunluk-grup-tahsilat:hover td,
+        #gunlukIslemTablo tr.gunluk-tahsilat-satir:hover td,
+        #gunlukIslemTablo tr.gunluk-kalem-satir:hover td {
+            background-color: #f8fafc !important;
         }
         .ozet-rozet-kutu .ozet-rozet-ust {
             font-size: 1.65rem;
@@ -3046,7 +3190,7 @@
         </div>
 
         <div class="modal fade" id="gunlukIslemModal" tabindex="-1" aria-labelledby="gunlukIslemModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+            <div class="modal-dialog modal-dialog-centered modal-xl">
                 <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
                     <div class="modal-header text-white border-0 py-3 px-4" style="background: linear-gradient(120deg, #166534 0%, #15803d 50%, #0f766e 100%);">
                         <div>
@@ -3055,8 +3199,8 @@
                         </div>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
                     </div>
-                    <div class="modal-body bg-light p-3 p-md-4">
-                        <div class="row g-2 align-items-end mb-3">
+                    <div class="modal-body bg-light p-3 p-md-3">
+                        <div class="row g-2 align-items-end flex-shrink-0">
                             <div class="col-sm-auto">
                                 <label class="form-label small text-secondary mb-0">Başlangıç</label>
                                 <input type="date" class="form-control" id="gunlukBaslangic">
@@ -3076,112 +3220,96 @@
                                 Cari alacak (toplam): <strong class="text-dark" id="gunlukCariAlacak">0.00 ₺</strong>
                             </div>
                         </div>
-                        <div class="row g-2 mb-3">
-                            <div class="col-6 col-md">
-                                <div class="bg-white border gunluk-ozet-kutu text-center">
-                                    <div class="text-muted small">Nakit</div>
-                                    <div class="fw-bold text-success" id="ozNakit">0.00 ₺</div>
+                        <div class="gunluk-islem-govde">
+                            <aside class="gunluk-ozet-yan" aria-label="Günlük özet">
+                                <div class="gunluk-ozet-sutun">
+                                    <div class="gunluk-ozet-baslik">Satış</div>
+                                    <div class="bg-white border gunluk-ozet-kutu">
+                                        <div class="text-muted small">Nakit</div>
+                                        <div class="fw-bold text-success" id="ozNakit">0.00 ₺</div>
+                                    </div>
+                                    <div class="bg-white border gunluk-ozet-kutu">
+                                        <div class="text-muted small">Kart / POS</div>
+                                        <div class="fw-bold text-primary" id="ozKart">0.00 ₺</div>
+                                    </div>
+                                    <div class="bg-white border gunluk-ozet-kutu">
+                                        <div class="text-muted small">Havale / EFT</div>
+                                        <div class="fw-bold text-warning text-dark" id="ozHavale">0.00 ₺</div>
+                                    </div>
+                                    <div class="bg-white border gunluk-ozet-kutu">
+                                        <div class="text-muted small">Veresiye</div>
+                                        <div class="fw-bold text-danger" id="ozVeresiye">0.00 ₺</div>
+                                    </div>
+                                    <div class="bg-white border gunluk-ozet-kutu border-primary border-2">
+                                        <div class="text-muted small">Satış ciro</div>
+                                        <div class="fw-bold text-primary" id="ozToplamVeresiyesiz">0.00 ₺</div>
+                                        <div class="text-muted" style="font-size:0.7rem;line-height:1.2">veresiyesiz</div>
+                                        <div class="fw-bold text-primary mt-1" id="ozToplam">0.00 ₺</div>
+                                        <div class="text-muted" style="font-size:0.7rem;line-height:1.2">veresiyeli</div>
+                                    </div>
+                                </div>
+                                <div class="gunluk-ozet-sutun">
+                                    <div class="gunluk-ozet-baslik">Gider</div>
+                                    <div class="bg-white border gunluk-ozet-kutu border-danger border-opacity-25">
+                                        <div class="text-muted small">Nakit çıkış</div>
+                                        <div class="fw-bold text-danger" id="ozGiderNakit">0.00 ₺</div>
+                                    </div>
+                                    <div class="bg-white border gunluk-ozet-kutu border-danger border-opacity-25">
+                                        <div class="text-muted small">Kart çıkış</div>
+                                        <div class="fw-bold text-danger" id="ozGiderKart">0.00 ₺</div>
+                                    </div>
+                                    <div class="bg-white border gunluk-ozet-kutu border-danger border-opacity-25">
+                                        <div class="text-muted small">Havale çıkış</div>
+                                        <div class="fw-bold text-danger" id="ozGiderHavale">0.00 ₺</div>
+                                    </div>
+                                    <div class="bg-white border gunluk-ozet-kutu border-secondary border-opacity-50">
+                                        <div class="text-muted small">Mal alım veresiye</div>
+                                        <div class="fw-bold text-secondary" id="ozMalAlimVeresiye">0.00 ₺</div>
+                                    </div>
+                                    <div class="bg-white border gunluk-ozet-kutu border-danger border-2">
+                                        <div class="text-muted small">Kasa çıkışı</div>
+                                        <div class="fw-bold text-danger" id="ozGiderKasaToplam">0.00 ₺</div>
+                                    </div>
+                                    <div class="gunluk-ozet-alt">
+                                        Tedarikçi: <strong class="text-dark" id="ozGiderTedarikciKasa">0.00 ₺</strong><br>
+                                        Genel: <strong class="text-dark" id="ozGiderGenelKasa">0.00 ₺</strong>
+                                    </div>
+                                </div>
+                            </aside>
+                            <div class="gunluk-liste-yan">
+                                <div class="table-responsive rounded-3 border bg-white gunluk-islem-tablo-wrap">
+                                    <table class="table table-sm table-hover align-middle mb-0" id="gunlukIslemTablo">
+                                        <colgroup>
+                                            <col style="width:6.25rem">
+                                            <col style="width:calc(11% + 3cm)">
+                                            <col style="width:11.5%">
+                                            <col>
+                                            <col style="width:2.2rem">
+                                            <col style="width:4.5rem">
+                                            <col style="width:5.35rem">
+                                            <col style="width:4.75rem">
+                                        </colgroup>
+                                        <thead class="table-light sticky-top">
+                                            <tr class="small text-secondary">
+                                                <th>Tarih / saat</th>
+                                                <th>Açıklama</th>
+                                                <th class="text-center">Tür</th>
+                                                <th>Ürün / hizmet</th>
+                                                <th class="text-center">Adet</th>
+                                                <th class="text-end">Birim</th>
+                                                <th class="text-end">Tutar</th>
+                                                <th class="text-end">İşlem</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="gunlukIslemTablosu">
+                                            <tr><td colspan="8" class="text-center text-muted py-4">Yükleniyor…</td></tr>
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
-                            <div class="col-6 col-md">
-                                <div class="bg-white border gunluk-ozet-kutu text-center">
-                                    <div class="text-muted small">Kart / POS</div>
-                                    <div class="fw-bold text-primary" id="ozKart">0.00 ₺</div>
-                                </div>
-                            </div>
-                            <div class="col-6 col-md">
-                                <div class="bg-white border gunluk-ozet-kutu text-center">
-                                    <div class="text-muted small">Havale / EFT</div>
-                                    <div class="fw-bold text-warning text-dark" id="ozHavale">0.00 ₺</div>
-                                </div>
-                            </div>
-                            <div class="col-6 col-md">
-                                <div class="bg-white border gunluk-ozet-kutu text-center">
-                                    <div class="text-muted small">Veresiye</div>
-                                    <div class="fw-bold text-danger" id="ozVeresiye">0.00 ₺</div>
-                                </div>
-                            </div>
-                            <div class="col-6 col-md">
-                                <div class="bg-white border gunluk-ozet-kutu text-center border-primary border-2">
-                                    <div class="text-muted small">Satış ciro</div>
-                                    <div class="fw-bold text-primary" id="ozToplamVeresiyesiz">0.00 ₺</div>
-                                    <div class="text-muted" style="font-size:0.7rem;line-height:1.2">veresiyesiz</div>
-                                    <div class="fw-bold text-primary mt-1" id="ozToplam">0.00 ₺</div>
-                                    <div class="text-muted" style="font-size:0.7rem;line-height:1.2">veresiyeli</div>
-                                </div>
-                            </div>
-                        </div>
-                        <p class="small fw-semibold text-secondary mb-1 mt-2"><i class="fa-solid fa-arrow-trend-down me-1 text-danger"></i>Giderler — kasadan çıkan tutarlar (tedarikçi + genel)</p>
-                        <div class="row g-2 mb-2">
-                            <div class="col-6 col-md">
-                                <div class="bg-white border gunluk-ozet-kutu text-center border-danger border-opacity-25">
-                                    <div class="text-muted small">Nakit çıkış</div>
-                                    <div class="fw-bold text-danger" id="ozGiderNakit">0.00 ₺</div>
-                                </div>
-                            </div>
-                            <div class="col-6 col-md">
-                                <div class="bg-white border gunluk-ozet-kutu text-center border-danger border-opacity-25">
-                                    <div class="text-muted small">Kart çıkış</div>
-                                    <div class="fw-bold text-danger" id="ozGiderKart">0.00 ₺</div>
-                                </div>
-                            </div>
-                            <div class="col-6 col-md">
-                                <div class="bg-white border gunluk-ozet-kutu text-center border-danger border-opacity-25">
-                                    <div class="text-muted small">Havale çıkış</div>
-                                    <div class="fw-bold text-danger" id="ozGiderHavale">0.00 ₺</div>
-                                </div>
-                            </div>
-                            <div class="col-6 col-md">
-                                <div class="bg-white border gunluk-ozet-kutu text-center border-secondary border-opacity-50">
-                                    <div class="text-muted small">Mal alım veresiye</div>
-                                    <div class="fw-bold text-secondary" id="ozMalAlimVeresiye">0.00 ₺</div>
-                                </div>
-                            </div>
-                            <div class="col-12 col-md">
-                                <div class="bg-white border gunluk-ozet-kutu text-center border-danger border-2">
-                                    <div class="text-muted small">Toplam kasa çıkışı (nakit+kart+havale)</div>
-                                    <div class="fw-bold text-danger fs-5" id="ozGiderKasaToplam">0.00 ₺</div>
-                                </div>
-                            </div>
-                            <div class="col-12">
-                                <div class="small text-muted px-1">
-                                    Tedarikçi (kasa): <strong class="text-dark" id="ozGiderTedarikciKasa">0.00 ₺</strong>
-                                    <span class="mx-2">·</span>
-                                    Genel gider (kasa): <strong class="text-dark" id="ozGiderGenelKasa">0.00 ₺</strong>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="table-responsive rounded-3 border bg-white gunluk-islem-tablo-wrap" style="max-height: min(50vh, 420px);">
-                            <table class="table table-sm table-hover align-middle mb-0" id="gunlukIslemTablo">
-                                <colgroup>
-                                    <col style="width:6.25rem">
-                                    <col style="width:calc(11% + 3cm)">
-                                    <col style="width:11.5%">
-                                    <col>
-                                    <col style="width:2.2rem">
-                                    <col style="width:4.5rem">
-                                    <col style="width:5.35rem">
-                                    <col style="width:4.75rem">
-                                </colgroup>
-                                <thead class="table-light sticky-top">
-                                    <tr class="small text-secondary">
-                                        <th>Tarih / saat</th>
-                                        <th>Açıklama</th>
-                                        <th class="text-center">Tür</th>
-                                        <th>Ürün / hizmet</th>
-                                        <th class="text-center">Adet</th>
-                                        <th class="text-end">Birim</th>
-                                        <th class="text-end">Tutar</th>
-                                        <th class="text-end">İşlem</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="gunlukIslemTablosu">
-                                    <tr><td colspan="8" class="text-center text-muted py-4">Yükleniyor…</td></tr>
-                                </tbody>
-                            </table>
                         </div>
                     </div>
-                    <div class="modal-footer bg-white border-top py-2 px-4">
+                    <div class="modal-footer bg-white border-top py-2 px-4 flex-shrink-0">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
                     </div>
                 </div>
@@ -3923,8 +4051,8 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="js/utils.js?v=1.0.81"></script>
-    <script src="js/navigation.js?v=1.0.81"></script>
-    <script src="app.js?v=1.0.81"></script>
+    <script src="js/utils.js?v=1.0.82"></script>
+    <script src="js/navigation.js?v=1.0.82"></script>
+    <script src="app.js?v=1.0.82"></script>
 </body>
 </html>
