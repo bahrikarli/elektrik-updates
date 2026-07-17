@@ -210,16 +210,17 @@ function varsayilanGuncellemeManifestUrl() {
 async function guncellemeManifestOku() {
   const currentVersion = String(packageJson?.version || '0.0.0');
   const envUrl = String(process.env.UPDATE_MANIFEST_URL || '').trim();
-  if (envUrl === '0' || envUrl.toLowerCase() === 'off') {
+  /* Bos / off: sunucu paketleri manuel yuklenir — GitHub otomatik kontrol YOK */
+  if (!envUrl || envUrl === '0' || envUrl.toLowerCase() === 'off') {
     return {
       success: true,
       configured: false,
       currentVersion,
       updateAvailable: false,
-      message: 'Güncelleme kontrolü kapalı (UPDATE_MANIFEST_URL=off).',
+      message: 'Otomatik güncelleme kapalı. Sunucu paketleri manuel yüklenir.',
     };
   }
-  const manifestUrl = envUrl || varsayilanGuncellemeManifestUrl();
+  const manifestUrl = envUrl;
   let manifestBuffer = null;
   try {
     manifestBuffer = await urlIcerikIndir(manifestUrl);

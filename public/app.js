@@ -5990,7 +5990,9 @@ async function surumModalAc() {
   set('surumNode', 'Yükleniyor…');
   set('surumBackupPath', 'Yükleniyor…');
   set('surumGeneratedAt', 'Yükleniyor…');
-  set('surumGuncellemeDurum', 'Henüz kontrol edilmedi.');
+  set('surumGuncellemeDurum', 'Otomatik güncelleme kapalı — paketler manuel yüklenir.');
+  const guncelleBtn = document.querySelector('#surumModal button[onclick="guncellemeKontrolEt()"]');
+  if (guncelleBtn) guncelleBtn.classList.add('d-none');
   const demoWrap = document.getElementById('surumDemoWrap');
   const demoMesaj = document.getElementById('surumDemoMesaj');
   if (demoWrap) demoWrap.classList.add('d-none');
@@ -6029,6 +6031,24 @@ async function surumModalAc() {
     set('surumNode', '-');
     set('surumBackupPath', '-');
     set('surumGeneratedAt', '-');
+  }
+  try {
+    const gk = await fetch('/api/guncelleme-kontrol');
+    const gd = await gk.json().catch(() => ({}));
+    if (gk.ok && gd.success && gd.configured) {
+      if (guncelleBtn) guncelleBtn.classList.remove('d-none');
+      set(
+        'surumGuncellemeDurum',
+        gd.updateAvailable
+          ? `Yeni sürüm: v${gd.remoteVersion || '?'}`
+          : `Uygulama güncel (v${gd.currentVersion || '-'}).`,
+      );
+    } else {
+      set('surumGuncellemeDurum', 'Otomatik güncelleme kapalı. Sunucu paketlerini manuel yükleyin.');
+      if (guncelleBtn) guncelleBtn.classList.add('d-none');
+    }
+  } catch (_) {
+    set('surumGuncellemeDurum', 'Otomatik güncelleme kapalı. Sunucu paketlerini manuel yükleyin.');
   }
   bootstrap.Modal.getOrCreateInstance(document.getElementById('surumModal')).show();
   desktopGuncellemeKontrolBaslat();
@@ -6216,11 +6236,11 @@ async function guncellemeDurumSayfaAcilis() {
 
 async function guncellemeOtomatikKontrol() {
   try {
-    await guncellemeDurumSayfaAcilis();
-
+    /* Sunucu paketleri manuel yuklenir — GitHub otomatik kontrol/indirme yok */
     const res = await fetch('/api/guncelleme-kontrol');
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.success || !data.configured) return;
+    await guncellemeDurumSayfaAcilis();
 
     const durRes = await fetch('/api/guncelleme-indir-durum');
     const dur = await durRes.json().catch(() => ({}));
@@ -6313,9 +6333,16 @@ async function guncellemeKontrolEt() {
       return;
     }
     if (!data.configured) {
-      if (el) el.innerHTML = '<span class="text-muted">Uzaktan güncelleme henüz yapılandırılmamış.</span>';
+      if (el) {
+        el.innerHTML =
+          '<span class="text-muted">Otomatik güncelleme kapalı. Sunucu paketlerini manuel yükleyin.</span>';
+      }
+      const btn = document.querySelector('#surumModal button[onclick="guncellemeKontrolEt()"]');
+      if (btn) btn.classList.add('d-none');
       return;
     }
+    const btn = document.querySelector('#surumModal button[onclick="guncellemeKontrolEt()"]');
+    if (btn) btn.classList.remove('d-none');
     if (data.updateAvailable) {
       guncellemeBildirimGuncelle({
         status: data.downloadStatus || 'idle',

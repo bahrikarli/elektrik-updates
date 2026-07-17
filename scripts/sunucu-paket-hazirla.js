@@ -127,6 +127,8 @@ DB_USER=sa
 DB_PASSWORD=BURAYA_SQL_SIFRE
 DB_ENCRYPT=false
 DB_TRUST_CERT=true
+# Otomatik GitHub guncelleme KAPALI (sunucu paketi manuel yuklenir)
+UPDATE_MANIFEST_URL=off
 `);
 
 writeBat(path.join(OUT, 'BASLAT.bat'), `@echo off
