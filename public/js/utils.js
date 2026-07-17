@@ -206,6 +206,7 @@ const BUYUK_HARF_DISLA_TIP = new Set([
 function metinBuyukHarfMi(el) {
   if (!el || el.disabled || el.readOnly) return false;
   if (el.dataset?.buyukHarf === 'false' || el.classList?.contains('buyuk-harf-kapali')) return false;
+  if (el.closest?.('#giris-ekrani, #girisFormu, #view-login')) return false;
   const tag = el.tagName;
   if (tag === 'TEXTAREA') return true;
   if (tag !== 'INPUT') return false;

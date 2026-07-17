@@ -3496,8 +3496,60 @@
     }
   }
 
+  /* ——— Büyük harf girişi ——— */
+  const BUYUK_HARF_DISLA_TIP = new Set([
+    'password', 'email', 'number', 'date', 'datetime-local', 'month', 'week',
+    'time', 'file', 'hidden', 'range', 'color', 'checkbox', 'radio', 'submit', 'button',
+  ]);
+
+  function metinBuyukHarfMi(el) {
+    if (!el || el.disabled || el.readOnly) return false;
+    if (el.dataset?.buyukHarf === 'false' || el.classList?.contains('buyuk-harf-kapali')) return false;
+    if (el.closest?.('#view-login')) return false;
+    const tag = el.tagName;
+    if (tag === 'TEXTAREA') return true;
+    if (tag !== 'INPUT') return false;
+    const t = String(el.type || 'text').toLowerCase();
+    if (BUYUK_HARF_DISLA_TIP.has(t)) return false;
+    return t === 'text' || t === 'search' || t === 'tel' || t === '';
+  }
+
+  function metinGirisBuyukHarfUygula(el) {
+    if (!metinBuyukHarfMi(el) || el.dataset?.composing === '1') return;
+    const bas = el.selectionStart;
+    const son = el.selectionEnd;
+    const yeni = String(el.value ?? '').toLocaleUpperCase('tr-TR');
+    if (yeni === el.value) return;
+    el.value = yeni;
+    if (typeof bas === 'number' && typeof son === 'number') {
+      try { el.setSelectionRange(bas, son); } catch (_) {}
+    }
+  }
+
+  function buyukHarfGirisBaslat() {
+    if (window.__buyukHarfGirisMobil) return;
+    window.__buyukHarfGirisMobil = true;
+    document.addEventListener('compositionstart', (e) => {
+      if (metinBuyukHarfMi(e.target)) e.target.dataset.composing = '1';
+    }, true);
+    document.addEventListener('compositionend', (e) => {
+      const t = e.target;
+      if (!metinBuyukHarfMi(t)) return;
+      delete t.dataset.composing;
+      metinGirisBuyukHarfUygula(t);
+    }, true);
+    document.addEventListener('input', (e) => metinGirisBuyukHarfUygula(e.target), true);
+    document.addEventListener('paste', (e) => {
+      const t = e.target;
+      if (!metinBuyukHarfMi(t)) return;
+      requestAnimationFrame(() => metinGirisBuyukHarfUygula(t));
+    }, true);
+    document.addEventListener('blur', (e) => metinGirisBuyukHarfUygula(e.target), true);
+  }
+
   /* ——— Olaylar ——— */
   function init() {
+    buyukHarfGirisBaslat();
     apiBase = varsayilanApiBase();
     const savedUser = localStorage.getItem(LS_USER);
     const savedSifre = localStorage.getItem(LS_SIFRE);

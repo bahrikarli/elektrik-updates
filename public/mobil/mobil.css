@@ -25,6 +25,21 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 
+input:not([type]),
+input[type="text"],
+input[type="search"],
+input[type="tel"],
+textarea:not(.buyuk-harf-kapali) {
+  text-transform: uppercase;
+}
+#view-login input,
+input[type="password"],
+input.buyuk-harf-kapali,
+input[data-buyuk-harf="false"],
+textarea.buyuk-harf-kapali {
+  text-transform: none;
+}
+
 body { overflow: hidden; }
 
 .view {
