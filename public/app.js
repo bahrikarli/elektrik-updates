@@ -3568,19 +3568,217 @@ async function ozetBilgileriniGetir() {
 
     const ciro = ozet.GunlukCiro != null ? ozet.GunlukCiro : 0;
     const gunEl = document.getElementById('kutuGunlukCiro');
-    if (gunEl) gunEl.textContent = Number(ciro).toFixed(2) + ' ₺';
+    if (gunEl) gunEl.textContent = ozetParaFmt(ciro);
 
     const srv = document.getElementById('kutuServis');
-    if (srv) srv.textContent = String(ozet.ToplamMusteri ?? 0);
+    if (srv) srv.textContent = ozetAdetFmt(ozet.ToplamMusteri ?? 0);
+
+    const nAlacak = document.getElementById('kutuNotAlacak');
+    if (nAlacak) nAlacak.textContent = ozetParaFmt(ozet.ToplamAlacak);
+    const nTed = document.getElementById('kutuNotTedarikci');
+    if (nTed) nTed.textContent = ozetParaFmt(ozet.TedarikciBorcToplam);
+    const nStok = document.getElementById('kutuNotStok');
+    if (nStok) nStok.textContent = ozetParaFmt(ozet.StokDegerToplam);
 
     const st = document.getElementById('kutuStok');
     if (st) {
       const n = stokToplamUrunSayisi() || Number(ozet.ToplamStokUrun ?? ozet.KritikStok ?? 0);
-      st.textContent = String(n);
+      st.textContent = ozetAdetFmt(n);
     }
+    const ted = document.getElementById('kutuTedarikci');
+    if (ted) ted.textContent = ozetAdetFmt(ozet.ToplamTedarikci ?? 0);
     stokOzetPanelleriniGuncelle();
+    ozetEnCokSatanYukle();
+    ozetRakamlariUygula();
   } catch (hata) {
     console.error('Özet bilgileri çekilirken hata:', hata);
+  }
+}
+
+const OZET_RAKAM_STORAGE = 'elektrik_ozet_rakam_gizli';
+
+function ozetParaFmt(v) {
+  const n = Number(v || 0);
+  return `${(Number.isFinite(n) ? n : 0).toLocaleString('tr-TR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })} ₺`;
+}
+
+function ozetAdetFmt(v) {
+  const n = Number(v || 0);
+  return (Number.isFinite(n) ? n : 0).toLocaleString('tr-TR');
+}
+
+function ozetRakamlariGizliMi() {
+  try {
+    return localStorage.getItem(OZET_RAKAM_STORAGE) === '1';
+  } catch (_) {
+    return false;
+  }
+}
+
+function ozetRakamlariUygula() {
+  const grid = document.getElementById('ozetRozetGrid');
+  const ikon = document.getElementById('ozetRakamToggleIkon');
+  const btn = document.getElementById('ozetRakamToggle');
+  const gizli = ozetRakamlariGizliMi();
+  if (grid) grid.classList.toggle('ozet-rakam-gizli', gizli);
+  if (ikon) {
+    ikon.classList.toggle('fa-eye', !gizli);
+    ikon.classList.toggle('fa-eye-slash', gizli);
+  }
+  if (btn) btn.title = gizli ? 'Parasal değerleri göster' : 'Parasal değerleri gizle';
+}
+
+function ozetRakamlariToggle(ev) {
+  if (ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+  }
+  let gizli = !ozetRakamlariGizliMi();
+  try {
+    localStorage.setItem(OZET_RAKAM_STORAGE, gizli ? '1' : '0');
+  } catch (_) {}
+  ozetRakamlariUygula();
+}
+
+function enCokSatanYmd(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function enCokSatanVarsayilanTarihler() {
+  const bit = new Date();
+  const bas = new Date();
+  bas.setDate(bas.getDate() - 30);
+  return { baslangic: enCokSatanYmd(bas), bitis: enCokSatanYmd(bit) };
+}
+
+function enCokSatanParaFmt(v) {
+  return `${Number(v || 0).toFixed(2)} ₺`;
+}
+
+function enCokSatanMetinEsc(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function enCokSatanBirim(r) {
+  const b = String(r?.Birim || '').trim();
+  return b || 'Adet';
+}
+
+function enCokSatanMiktarBirimli(miktar, r) {
+  const n = Number(miktar);
+  const sayi = Number.isFinite(n) ? String(n) : '0';
+  return `${sayi} ${enCokSatanMetinEsc(enCokSatanBirim(r))}`;
+}
+
+async function enCokSatanApiGetir(opts = {}) {
+  const v = enCokSatanVarsayilanTarihler();
+  const baslangic = opts.baslangic || v.baslangic;
+  const bitis = opts.bitis || v.bitis;
+  const limit = opts.limit != null ? opts.limit : 10;
+  const perKategori = opts.perKategori != null ? opts.perKategori : 5;
+  const u = new URL('/api/stok/en-cok-satilan', window.location.origin);
+  u.searchParams.set('baslangic', baslangic);
+  u.searchParams.set('bitis', bitis);
+  u.searchParams.set('limit', String(limit));
+  u.searchParams.set('perKategori', String(perKategori));
+  const res = await fetch(u);
+  if (!res.ok) throw new Error('İstek başarısız');
+  return res.json();
+}
+
+async function ozetEnCokSatanYukle() {
+  const ul = document.getElementById('ozetEnCokSatanListe');
+  if (!ul) return;
+  try {
+    const data = await enCokSatanApiGetir({ limit: 5 });
+    const liste = data.urunler || [];
+    if (!liste.length) {
+      ul.innerHTML = '<li class="text-muted small">Bu dönemde satış yok</li>';
+      return;
+    }
+    ul.innerHTML = liste
+      .map(
+        (r) => `<li title="${enCokSatanMetinEsc(r.UrunAdi)}">
+          <span class="sira">${r.Sira || ''}.</span>
+          <span class="urun">${enCokSatanMetinEsc(r.UrunAdi)}</span>
+          <span class="adet">${enCokSatanMiktarBirimli(r.ToplamAdet, r)}</span>
+        </li>`
+      )
+      .join('');
+  } catch (e) {
+    console.error(e);
+    ul.innerHTML = '<li class="text-muted small">Yüklenemedi</li>';
+  }
+}
+
+function enCokSatanTarihVarsayilan() {
+  const t = enCokSatanVarsayilanTarihler();
+  const bas = document.getElementById('ecsBaslangic');
+  const bit = document.getElementById('ecsBitis');
+  if (bas) bas.value = t.baslangic;
+  if (bit) bit.value = t.bitis;
+}
+
+async function enCokSatanTarihVarsayilanVeYukle() {
+  enCokSatanTarihVarsayilan();
+  await enCokSatanListele();
+}
+
+async function enCokSatanModalAc() {
+  const el = document.getElementById('enCokSatanModal');
+  if (!el) return;
+  enCokSatanTarihVarsayilan();
+  bootstrap.Modal.getOrCreateInstance(el).show();
+  await enCokSatanListele();
+}
+
+async function enCokSatanListele() {
+  const tbody = document.getElementById('enCokSatanTablosu');
+  if (!tbody) return;
+  const bas = document.getElementById('ecsBaslangic')?.value || '';
+  const bit = document.getElementById('ecsBitis')?.value || '';
+  if (!bas || !bit) {
+    alert('Başlangıç ve bitiş tarihlerini seçin.');
+    return;
+  }
+  tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Yükleniyor…</td></tr>';
+  try {
+    const data = await enCokSatanApiGetir({ baslangic: bas, bitis: bit, limit: 30, perKategori: 5 });
+    const gruplar = data.gruplar || [];
+    if (!gruplar.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Bu tarihler arasında satış yok.</td></tr>';
+      return;
+    }
+    const satirlar = [];
+    for (const g of gruplar) {
+      satirlar.push(`<tr class="ecs-kat-baslik">
+        <td colspan="5"><i class="fa-solid fa-folder-open me-1 opacity-75"></i>${enCokSatanMetinEsc(g.Kategori || 'Diğer')}</td>
+      </tr>`);
+      for (const r of g.urunler || []) {
+        const stok =
+          r.MevcutMiktar == null
+            ? '<span class="text-muted">—</span>'
+            : enCokSatanMiktarBirimli(r.MevcutMiktar, r);
+        satirlar.push(`<tr>
+          <td class="text-secondary fw-semibold">${r.Sira || ''}</td>
+          <td>${enCokSatanMetinEsc(r.UrunAdi)}</td>
+          <td class="text-center text-nowrap">${stok}</td>
+          <td class="text-end fw-bold text-success text-nowrap">${enCokSatanMiktarBirimli(r.ToplamAdet, r)}</td>
+          <td class="text-end text-nowrap">${enCokSatanParaFmt(r.ToplamTutar)}</td>
+        </tr>`);
+      }
+    }
+    tbody.innerHTML = satirlar.join('');
+  } catch (e) {
+    console.error(e);
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-4">Veriler yüklenemedi.</td></tr>';
   }
 }
 
@@ -4380,9 +4578,11 @@ function gunlukIslemGrupAnahtari(row) {
   if (
     st === 'satis_kalem' ||
     st === 'satis' ||
+    st === 'eksik_odeme' ||
     k === 'musteri_satis' ||
     k === 'satis' ||
     k === 'satis_tahsilat' ||
+    k === 'satis_eksik' ||
     k === 'musteri_tahsilat' ||
     k === 'musteri_odeme'
   ) {
@@ -4399,8 +4599,10 @@ function gunlukIslemTahsilatSatirMi(row) {
   const k = row.Kaynak || '';
   return (
     st === 'tahsilat' ||
+    st === 'eksik_odeme' ||
     st === 'mal_alim_odeme' ||
     k === 'satis_tahsilat' ||
+    k === 'satis_eksik' ||
     k === 'musteri_tahsilat' ||
     k === 'musteri_odeme' ||
     k === 'mal_alim_odeme'
@@ -4453,6 +4655,39 @@ function gunlukOdemeIkonHtml(tip) {
   return '';
 }
 
+function gunlukIslemGrupTemaSinif(row) {
+  const k = String(row?.Kaynak || '');
+  if (
+    k === 'mal_alim' ||
+    k === 'mal_alim_odeme' ||
+    row?.SatirTur === 'mal_alim_kalem' ||
+    row?.SatirTur === 'mal_alim_odeme'
+  ) {
+    return 'gunluk-tema-mal-alim';
+  }
+  if (
+    k === 'tedarikci_odeme' ||
+    k === 'genel_gider' ||
+    k === 'gider' ||
+    k === 'musteri_iade' ||
+    k === 'musteri_iade_odeme'
+  ) {
+    return 'gunluk-tema-gider';
+  }
+  if (
+    k === 'satis' ||
+    k === 'satis_tahsilat' ||
+    k === 'satis_eksik' ||
+    k === 'musteri_satis' ||
+    k === 'musteri_tahsilat' ||
+    k === 'musteri_odeme'
+  ) {
+    return 'gunluk-tema-satis';
+  }
+  if (row?.Yon === 'cikis') return 'gunluk-tema-gider';
+  return 'gunluk-tema-diger';
+}
+
 function gunlukIslemGruplariIsaretle(liste) {
   const gruplar = new Map();
   liste.forEach((row) => {
@@ -4463,6 +4698,7 @@ function gunlukIslemGruplariIsaretle(liste) {
       row.GunlukTarihGoster = true;
       row.GunlukTurBaslikGoster = true;
       row.GunlukGrupSon = true;
+      row.GunlukGrupTema = gunlukIslemGrupTemaSinif(row);
       return;
     }
     if (!gruplar.has(key)) gruplar.set(key, []);
@@ -4471,21 +4707,37 @@ function gunlukIslemGruplariIsaretle(liste) {
   for (const items of gruplar.values()) {
     const coklu = items.length > 1;
     const grupOdeme = coklu ? gunlukGrupOdemeBul(items) : null;
+    const tema = gunlukIslemGrupTemaSinif(items[0]);
+    let kalemToplam = 0;
+    let kalemAdet = 0;
+    for (const r of items) {
+      const st = r.SatirTur || '';
+      if (st === 'satis_kalem' || st === 'mal_alim_kalem' || st === 'iade_kalem') {
+        kalemToplam += Number(r.Tutar || 0);
+        kalemAdet += 1;
+      }
+    }
+    kalemToplam = Math.round(kalemToplam * 100) / 100;
     items.forEach((row, i) => {
       const tahsilat = gunlukIslemTahsilatSatirMi(row);
-      const ust = coklu && i === 0;
-      row.GunlukMusteriGoster = !coklu || ust;
-      row.GunlukOdemeGoster = !coklu || ust;
-      row.GunlukTarihGoster = !coklu || ust;
+      const ust = !coklu || i === 0;
+      row.GunlukMusteriGoster = !coklu || i === 0;
+      row.GunlukOdemeGoster = !coklu || i === 0;
+      row.GunlukTarihGoster = !coklu || i === 0;
       /* Satış üst satırda; tahsilat/ödeme rozeti tutar satırının karşısında */
-      row.GunlukTurBaslikGoster = !coklu || ust || tahsilat;
+      row.GunlukTurBaslikGoster = !coklu || i === 0 || tahsilat;
       row.GunlukGrupUst = ust;
       row.GunlukGrupTahsilat = coklu && tahsilat;
       row.GunlukGrupSon = i === items.length - 1;
       row.GunlukGrupIc = coklu && i > 0 && i < items.length - 1;
       row.GunlukTahsilatOncesi =
         coklu && i < items.length - 1 && gunlukIslemTahsilatSatirMi(items[i + 1]);
+      row.GunlukGrupTema = tema;
       if (grupOdeme != null && grupOdeme !== '—') row.GunlukGrupOdeme = grupOdeme;
+      if (kalemAdet > 0) {
+        row.GunlukGrupKalemAdet = kalemAdet;
+        row.GunlukGrupKalemToplam = kalemToplam;
+      }
     });
   }
   return liste;
@@ -4548,6 +4800,9 @@ function gunlukIslemTurEtiketMetin(row, turEtiket) {
     if (od === 'Veresiye') return 'Mal alım — Veresiye';
   }
   if (gunlukIslemTahsilatSatirMi(row) && !gunlukIslemMalAlimOdemeSatirMi(row)) {
+    if ((row.SatirTur || '') === 'eksik_odeme' || row.Kaynak === 'satis_eksik') {
+      return 'Eksik ödeme';
+    }
     const od = row.GunlukGrupOdeme != null ? row.GunlukGrupOdeme : row.Odeme;
     if (turEtiket === 'İade Ödeme') {
       if (od && od !== '—') return `İade Ödeme — ${od}`;
@@ -4599,6 +4854,7 @@ function gunlukIslemTurHucre(row, turBadge, turEtiket, mobilIkon, ek = '', alt =
 
 function gunlukIslemSatirSiniflari(row, ek = '') {
   let cls = `musteri-hareket-ana${ek}`;
+  if (row.GunlukGrupTema) cls += ` ${row.GunlukGrupTema}`;
   if (row.GunlukGrupUst) cls += ' gunluk-grup-ust';
   if (row.GunlukGrupTahsilat) cls += ' gunluk-grup-tahsilat';
   if (gunlukIslemTahsilatSatirMi(row)) cls += ' gunluk-tahsilat-satir';
@@ -4624,6 +4880,63 @@ function gunlukIslemSatirSiniflari(row, ek = '') {
   return cls;
 }
 
+let _gunlukOzetSon = null;
+
+function gunlukOzetDetayDoldur() {
+  const oz = (_gunlukOzetSon && _gunlukOzetSon.ozet) || {};
+  const veresiyesiz =
+    oz.toplamVeresiyesiz != null
+      ? oz.toplamVeresiyesiz
+      : Math.max(0, (Number(oz.toplam) || 0) - (Number(oz.veresiye) || 0));
+
+  const set = (id, val) => {
+    const n = document.getElementById(id);
+    if (n) n.textContent = gunlukParaFmt(val);
+  };
+  set('godNakit', oz.nakit);
+  set('godKart', oz.kart);
+  set('godHavale', oz.havale);
+  set('godVeresiye', oz.veresiye);
+  set('godCiro', veresiyesiz);
+  set('godCiroVeresiyeli', oz.toplam);
+  set('godKasaGiris', oz.kasaGiris);
+  set('godGiderNakit', oz.giderNakit);
+  set('godGiderKart', oz.giderKart);
+  set('godGiderHavale', oz.giderHavale);
+  set('godMalAlimVeresiye', oz.malAlimVeresiye);
+  set('godTedarikciKasa', oz.giderTedarikciKasa);
+  set('godGenelKasa', oz.giderGenelKasa);
+  set('godGiderKasa', oz.giderKasaToplam);
+}
+
+function gunlukOzetDetayAc(_kaynak) {
+  const el = document.getElementById('gunlukOzetDetayModal');
+  if (!el) return;
+  const bas = document.getElementById('gunlukBaslangic')?.value || '';
+  const bit = document.getElementById('gunlukBitis')?.value || '';
+  const godBas = document.getElementById('godBaslangic');
+  const godBit = document.getElementById('godBitis');
+  if (godBas) godBas.value = bas;
+  if (godBit) godBit.value = bit;
+  gunlukOzetDetayDoldur();
+  bootstrap.Modal.getOrCreateInstance(el).show();
+}
+
+async function gunlukOzetDetayListele() {
+  const godBas = document.getElementById('godBaslangic')?.value || '';
+  const godBit = document.getElementById('godBitis')?.value || '';
+  if (!godBas || !godBit) {
+    alert('Başlangıç ve bitiş tarihlerini seçin.');
+    return;
+  }
+  const mainBas = document.getElementById('gunlukBaslangic');
+  const mainBit = document.getElementById('gunlukBitis');
+  if (mainBas) mainBas.value = godBas;
+  if (mainBit) mainBit.value = godBit;
+  await gunlukIslemleriYukle();
+  gunlukOzetDetayDoldur();
+}
+
 async function gunlukIslemleriYukle() {
   const bas = document.getElementById('gunlukBaslangic').value;
   const bit = document.getElementById('gunlukBitis').value;
@@ -4641,6 +4954,12 @@ async function gunlukIslemleriYukle() {
     if (!res.ok) throw new Error('İstek başarısız');
     const data = await res.json();
     const oz = data.ozet || {};
+    _gunlukOzetSon = {
+      bas,
+      bit,
+      ozet: oz,
+      cariAlacakToplam: data.cariAlacakToplam,
+    };
 
     document.getElementById('ozNakit').textContent = gunlukParaFmt(oz.nakit);
     document.getElementById('ozKart').textContent = gunlukParaFmt(oz.kart);
@@ -4671,6 +4990,15 @@ async function gunlukIslemleriYukle() {
     const ggk = document.getElementById('ozGiderGenelKasa');
     if (gtk) gtk.textContent = gunlukParaFmt(oz.giderTedarikciKasa);
     if (ggk) ggk.textContent = gunlukParaFmt(oz.giderGenelKasa);
+
+    const detayEl = document.getElementById('gunlukOzetDetayModal');
+    if (detayEl?.classList.contains('show')) {
+      const godBas = document.getElementById('godBaslangic');
+      const godBit = document.getElementById('godBitis');
+      if (godBas) godBas.value = bas;
+      if (godBit) godBit.value = bit;
+      gunlukOzetDetayDoldur();
+    }
 
     const liste = gunlukIslemGruplariIsaretle(data.islemler || []);
     if (liste.length === 0) {
@@ -4703,9 +5031,12 @@ async function gunlukIslemleriYukle() {
           : '';
 
         const malOdemeSatir = gunlukIslemMalAlimOdemeSatirMi(row);
+        const eksikOdemeSatir =
+          satirTur === 'eksik_odeme' || kaynak === 'satis_eksik';
         let turBadge = 'bg-secondary';
         if (satisSatir) turBadge = 'bg-danger';
         else if (malOdemeSatir && row.Odeme === 'Veresiye') turBadge = 'bg-danger';
+        else if (eksikOdemeSatir) turBadge = 'bg-warning text-dark';
         else if (tahsilatSatir) turBadge = 'bg-success';
         else if (kaynak === 'kasa') turBadge = 'bg-primary';
         else if (kaynak === 'iptal') turBadge = 'bg-danger';
@@ -4716,6 +5047,7 @@ async function gunlukIslemleriYukle() {
         let tutClass = yon === 'cikis' ? 'text-danger' : 'text-dark';
         if (satisSatir) tutClass = 'text-danger';
         else if (malAlimKalem) tutClass = 'text-danger';
+        else if (eksikOdemeSatir) tutClass = 'gunluk-tutar-veresiye';
         else if (tahsilatSatir) {
           const odTip = gunlukOdemeTipNorm(row.GunlukGrupOdeme || row.Odeme);
           tutClass = odTip === 'veresiye' ? 'gunluk-tutar-veresiye' : 'text-success';
@@ -4785,14 +5117,34 @@ async function gunlukIslemleriYukle() {
         if (kalemSatir) {
           const kalemCls = malAlimKalem ? ' gunluk-kalem-satir gunluk-mal-alim-kalem' : ' gunluk-kalem-satir';
           const tutarCls = malAlimKalem ? 'gunluk-mal-alim-tutar' : 'gunluk-kalem-tutar';
+          const grupKalemAdet = Number(row.GunlukGrupKalemAdet || 0);
+          const grupKalemToplam = Number(row.GunlukGrupKalemToplam || 0);
+          const grupToplamGoster =
+            row.GunlukTurBaslikGoster !== false &&
+            grupKalemAdet > 1 &&
+            grupKalemToplam > 0.009;
+          const turAlt = grupToplamGoster
+            ? `<div class="gunluk-grup-toplam" title="Bu işlemin toplamı">Toplam ${gunlukMetinEsc(gunlukParaFmt(grupKalemToplam))}</div>`
+            : '';
+          const sonKalem =
+            kalemSatir &&
+            (row.GunlukGrupSon || row.GunlukTahsilatOncesi) &&
+            grupKalemAdet > 1 &&
+            grupKalemToplam > 0.009;
+          const tutarHucre = sonKalem
+            ? `<td class="text-end text-nowrap gunluk-tutar-hucre">
+                <div class="${tutarCls}">${satirTutar.toFixed(2)} ₺</div>
+                <div class="gunluk-grup-toplam-satir" title="Bu işlemin toplamı">Σ ${gunlukMetinEsc(gunlukParaFmt(grupKalemToplam))}</div>
+              </td>`
+            : `<td class="text-end text-nowrap gunluk-tutar-hucre ${tutarCls}">${satirTutar.toFixed(2)} ₺</td>`;
           return `<tr class="${gunlukIslemSatirSiniflari(row, kalemCls)}">
           ${gunlukIslemTarihHucre(row, tarihStr)}
           ${gunlukIslemMusteriHucre(row, musteriAdMetin)}
-          ${gunlukIslemTurHucre(row, turBadge, turEtiket, mobilIkon)}
+          ${gunlukIslemTurHucre(row, turBadge, turEtiket, mobilIkon, '', turAlt)}
           <td class="gunluk-kalem-urun">${gunlukMetinEsc(row.UrunAdi || '-')}</td>
           <td class="text-center text-nowrap">${miktar}</td>
           <td class="text-end text-nowrap">${birimFmt}</td>
-          <td class="text-end text-nowrap gunluk-tutar-hucre ${tutarCls}">${satirTutar.toFixed(2)} ₺</td>
+          ${tutarHucre}
           <td class="text-end">${detayBtn}</td>
         </tr>`;
         }

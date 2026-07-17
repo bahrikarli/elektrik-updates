@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="mobil.css?v=39">
+  <link rel="stylesheet" href="mobil.css?v=43">
 </head>
 <body>
   <div id="view-login" class="view view-active">
@@ -77,31 +77,12 @@
       </nav>
 
       <section id="panel-satis" class="panel-satis-ana">
-        <div class="search-bar search-bar-scan">
-          <input id="satisArama" class="field-input satis-arama-input" type="text" inputmode="search" placeholder="Ürün adı veya barkod…" autocomplete="off" autocapitalize="off">
-          <button type="button" id="btnBarkodTara" class="btn btn-scan" title="Kamera ile barkod okut" aria-label="Barkod okut">
-            <span class="btn-scan-ikon" aria-hidden="true">📷</span>
-            <span class="btn-scan-metin">Okut</span>
-          </button>
-        </div>
-        <p class="satis-barkod-ipucu">Kamera ile barkod okutun veya barkodu yazın — okunan ürün sepete eklenir</p>
-        <div id="satisAramaSonuc" class="arama-sonuc-list" hidden></div>
-        <div class="sepet-wrap">
-          <div class="sepet-baslik">
-            <span>Sepet</span>
-            <button type="button" id="btnSepetTemizle" class="btn-text">Temizle</button>
-          </div>
-          <ul id="sepetListe" class="sepet-liste"></ul>
-          <p id="sepetBos" class="bos-metin">Sepete ürün ekleyin</p>
-          <div class="sepet-alt">
-            <span class="sepet-toplam-label">Toplam</span>
-            <span id="sepetToplam" class="sepet-toplam">0,00 ₺</span>
-          </div>
-          <button type="button" id="btnSatisTamamla" class="btn btn-primary btn-block" disabled>Satışı tamamla</button>
-        </div>
+        <button type="button" id="btnYeniSatis" class="btn btn-primary btn-block btn-yeni-satis">
+          <span aria-hidden="true">＋</span> Yeni satış
+        </button>
         <div class="son-islem-wrap">
           <div class="son-islem-baslik">
-            <h3 class="detay-baslik mb-0">Son işlemler</h3>
+            <h3 class="detay-baslik mb-0">Bugünkü işlemler</h3>
             <button type="button" id="btnSonIslemTum" class="btn-text">Tümü →</button>
           </div>
           <ul id="sonIslemListe" class="islem-liste islem-liste-kisa"></ul>
@@ -230,6 +211,38 @@
     <button type="button" id="btnAnaGeri" class="btn-ana-geri" hidden aria-label="Ana menüye dön" title="Ana menü">←</button>
   </div>
 
+  <!-- Yeni satış (sepet) -->
+  <dialog id="dlgYeniSatis" class="mobil-dialog mobil-dialog-scroll dlg-yeni-satis">
+    <div class="dialog-body dialog-body-satis">
+      <div class="dialog-baslik-satir">
+        <h2 class="dialog-title mb-0">Yeni satış</h2>
+        <button type="button" class="btn-text" data-dialog-close aria-label="Kapat">Kapat</button>
+      </div>
+      <div class="search-bar search-bar-scan">
+        <input id="satisArama" class="field-input satis-arama-input" type="text" inputmode="search" placeholder="Ürün adı veya barkod…" autocomplete="off" autocapitalize="off">
+        <button type="button" id="btnBarkodTara" class="btn btn-scan" title="Kamera ile barkod okut" aria-label="Barkod okut">
+          <span class="btn-scan-ikon" aria-hidden="true">📷</span>
+          <span class="btn-scan-metin">Okut</span>
+        </button>
+      </div>
+      <p class="satis-barkod-ipucu">Kamera ile barkod okutun veya barkodu yazın — okunan ürün sepete eklenir</p>
+      <div id="satisAramaSonuc" class="arama-sonuc-list" hidden></div>
+      <div class="sepet-wrap">
+        <div class="sepet-baslik">
+          <span>Sepet</span>
+          <button type="button" id="btnSepetTemizle" class="btn-text">Temizle</button>
+        </div>
+        <ul id="sepetListe" class="sepet-liste"></ul>
+        <p id="sepetBos" class="bos-metin">Sepete ürün ekleyin</p>
+        <div class="sepet-alt">
+          <span class="sepet-toplam-label">Toplam</span>
+          <span id="sepetToplam" class="sepet-toplam">0,00 ₺</span>
+        </div>
+        <button type="button" id="btnSatisTamamla" class="btn btn-primary btn-block" disabled>Satışı tamamla</button>
+      </div>
+    </div>
+  </dialog>
+
   <!-- Müşteri cari satış -->
   <dialog id="dlgMusteriSatis" class="mobil-dialog mobil-dialog-scroll">
     <form id="formMusteriSatis" method="dialog" class="dialog-body">
@@ -269,7 +282,7 @@
   </dialog>
 
   <!-- Satış onay -->
-  <dialog id="dlgSatis" class="mobil-dialog">
+  <dialog id="dlgSatis" class="mobil-dialog mobil-dialog-center">
     <form id="formSatis" method="dialog" class="dialog-body">
       <h2 class="dialog-title" id="dlgSatisBaslik">Satışı onayla</h2>
       <p id="dlgSatisToplam" class="dialog-toplam"></p>
@@ -573,6 +586,6 @@
 
   <script src="vendor/html5-qrcode.min.js"></script>
   <script src="vendor/html2canvas.min.js"></script>
-  <script src="app.js?v=55"></script>
+  <script src="app.js?v=57"></script>
 </body>
 </html>

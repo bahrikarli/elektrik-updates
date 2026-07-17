@@ -1109,6 +1109,7 @@
       return;
     }
     barkodTaraKapat();
+    yeniSatisModalKapat();
     const ana = $('anaSayfa');
     const main = $('mainPanels');
     const fab = $('btnAnaGeri');
@@ -1284,6 +1285,9 @@
   }
 
   function gunlukGrupTurEtiket(grupRows, kalemler) {
+    if ((grupRows || []).some((r) => r.SatirTur === 'eksik_odeme' || r.Kaynak === 'satis_eksik')) {
+      return 'Eksik ödeme';
+    }
     if (kalemler.some((k) => (k.SatirTur || '') === 'iade_kalem')) return 'İade';
     if (kalemler.length) return 'Satış';
     const ust = grupRows.find((r) => r.TurEtiket && r.SatirTur !== 'tahsilat');
@@ -1511,6 +1515,7 @@
     const tur = String(row.TurEtiket || '').toLowerCase();
     const odemeTip = gunlukOdemeTipNorm(row.Odeme);
     if (row.Yon === 'cikis') return 'islem-tur-gider';
+    if (tur.includes('eksik')) return 'islem-tur-eksik';
     if (tur.includes('tahsilat') || tur.includes('ödeme') || tur.includes('odeme')) return 'islem-tur-tahsilat';
     if (odemeTip === 'veresiye') return 'islem-tur-veresiye';
     if (odemeTip === 'nakit') return 'islem-tur-nakit';
@@ -1913,18 +1918,20 @@
         const satirTutar = Math.round(s.birimFiyat * s.miktar * 100) / 100;
         li.innerHTML = `
           <span class="sepet-ad">${esc(s.urunAdi)}</span>
-          <label class="sepet-fiyat-wrap">
-            <span class="sepet-fiyat-label">₺</span>
-            <input type="number" class="sepet-fiyat-input" min="0" step="0.01" inputmode="decimal"
-              value="${s.birimFiyat.toFixed(2)}" data-fiyat="${idx}" aria-label="Birim fiyat">
-          </label>
-          <div class="sepet-miktar-wrap">
-            <button type="button" class="sepet-miktar-btn" data-az="${idx}">−</button>
-            <span class="sepet-miktar">${s.miktar}</span>
-            <button type="button" class="sepet-miktar-btn" data-art="${idx}">+</button>
-          </div>
-          <span class="sepet-satir-tutar">${para(satirTutar)}</span>
-          <button type="button" class="sepet-sil" data-sil="${idx}" aria-label="Sil">×</button>`;
+          <div class="sepet-satir-kontroller">
+            <label class="sepet-fiyat-wrap">
+              <span class="sepet-fiyat-label">₺</span>
+              <input type="number" class="sepet-fiyat-input" min="0" step="0.01" inputmode="decimal"
+                value="${s.birimFiyat.toFixed(2)}" data-fiyat="${idx}" aria-label="Birim fiyat">
+            </label>
+            <div class="sepet-miktar-wrap">
+              <button type="button" class="sepet-miktar-btn" data-az="${idx}">−</button>
+              <span class="sepet-miktar">${s.miktar}</span>
+              <button type="button" class="sepet-miktar-btn" data-art="${idx}">+</button>
+            </div>
+            <span class="sepet-satir-tutar">${para(satirTutar)}</span>
+            <button type="button" class="sepet-sil" data-sil="${idx}" aria-label="Sil">×</button>
+          </div>`;
         ul.appendChild(li);
       });
       ul.querySelectorAll('[data-fiyat]').forEach((inp) => {
@@ -2017,6 +2024,21 @@
     $('satisMusteriSonuc').hidden = true;
   }
 
+  function yeniSatisModalAc() {
+    const dlg = $('dlgYeniSatis');
+    if (!dlg) return;
+    satisPanelHazirla();
+    sepetCiz();
+    if (!dlg.open) dlg.showModal();
+    setTimeout(() => $('satisArama')?.focus(), 80);
+  }
+
+  function yeniSatisModalKapat() {
+    barkodTaraKapat();
+    const dlg = $('dlgYeniSatis');
+    if (dlg?.open) dlg.close();
+  }
+
   function satisDialogAc() {
     if (sepet.length === 0) return;
     const toplam = Math.round(sepetToplamHesapla() * 100) / 100;
@@ -2058,18 +2080,20 @@
         const satirTutar = Math.round(s.birimFiyat * s.miktar * 100) / 100;
         li.innerHTML = `
           <span class="sepet-ad">${esc(s.urunAdi)}</span>
-          <label class="sepet-fiyat-wrap">
-            <span class="sepet-fiyat-label">₺</span>
-            <input type="number" class="sepet-fiyat-input" min="0" step="0.01" inputmode="decimal"
-              value="${s.birimFiyat.toFixed(2)}" data-ms-fiyat="${idx}" aria-label="Birim fiyat">
-          </label>
-          <div class="sepet-miktar-wrap">
-            <button type="button" class="sepet-miktar-btn" data-ms-az="${idx}">−</button>
-            <span class="sepet-miktar">${s.miktar}</span>
-            <button type="button" class="sepet-miktar-btn" data-ms-art="${idx}">+</button>
-          </div>
-          <span class="sepet-satir-tutar">${para(satirTutar)}</span>
-          <button type="button" class="sepet-sil" data-ms-sil="${idx}" aria-label="Sil">×</button>`;
+          <div class="sepet-satir-kontroller">
+            <label class="sepet-fiyat-wrap">
+              <span class="sepet-fiyat-label">₺</span>
+              <input type="number" class="sepet-fiyat-input" min="0" step="0.01" inputmode="decimal"
+                value="${s.birimFiyat.toFixed(2)}" data-ms-fiyat="${idx}" aria-label="Birim fiyat">
+            </label>
+            <div class="sepet-miktar-wrap">
+              <button type="button" class="sepet-miktar-btn" data-ms-az="${idx}">−</button>
+              <span class="sepet-miktar">${s.miktar}</span>
+              <button type="button" class="sepet-miktar-btn" data-ms-art="${idx}">+</button>
+            </div>
+            <span class="sepet-satir-tutar">${para(satirTutar)}</span>
+            <button type="button" class="sepet-sil" data-ms-sil="${idx}" aria-label="Sil">×</button>
+          </div>`;
         ul.appendChild(li);
       });
       ul.querySelectorAll('[data-ms-fiyat]').forEach((inp) => {
@@ -2399,6 +2423,7 @@
       const payload = await res.json().catch(() => ({}));
       if (res.ok && payload.success) {
         $('dlgSatis').close();
+        yeniSatisModalKapat();
         gunlukPerakendeDuzenleSifirla();
         sepet = [];
         sepetCiz();
@@ -3555,6 +3580,12 @@
     });
     $('btnSepetTemizle').onclick = () => { sepet = []; sepetCiz(); };
     $('btnSatisTamamla').onclick = satisDialogAc;
+    $('btnYeniSatis')?.addEventListener('click', () => yeniSatisModalAc());
+    $('dlgYeniSatis')?.addEventListener('close', () => {
+      barkodTaraKapat();
+      const sonuc = $('satisAramaSonuc');
+      if (sonuc) sonuc.hidden = true;
+    });
     $('formSatis').onsubmit = satisKaydet;
     $('dlgSatis')?.addEventListener('close', () => {
       if (_gunlukDuzenleLogID) gunlukPerakendeDuzenleSifirla();

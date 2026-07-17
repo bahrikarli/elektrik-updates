@@ -554,6 +554,89 @@ async function ensureIscilikBedeliStokKarti(pool) {
   return yeniId;
 }
 
+const STOK_KATEGORI_SECENEK = [
+  'Kablolar ve İletkenler',
+  'Priz, Anahtar ve Aydınlatma',
+  'Sigorta ve Pano Malzemeleri',
+  'Tesisat Malzemeleri ve Borular',
+  'Bağlantı ve İzolasyon Malzemeleri',
+  'Ölçü Aletleri ve El Aletleri',
+  'İş Güvenliği Ekipmanları',
+  'Yardımcı Malzemeler',
+];
+
+function stokKategoriAnahtar(s) {
+  return String(s || '')
+    .trim()
+    .toLocaleLowerCase('tr-TR')
+    .replace(/\s+/g, ' ');
+}
+
+/** Liste / rapor için standart kategori adı (büyük-küçük harf birleşir; Tedarik → Diğer). */
+function stokKategoriNormalize(raw) {
+  const t = String(raw || '').trim();
+  if (!t) return 'Diğer';
+  const key = stokKategoriAnahtar(t);
+  if (key === 'tedarik') return 'Diğer';
+  if (key === 'hizmet') return 'Hizmet';
+  const hit = STOK_KATEGORI_SECENEK.find((k) => stokKategoriAnahtar(k) === key);
+  return hit || t;
+}
+
+/** Eski "Tedarik" / boş / ALL CAPS kategorileri tek sefer düzelt. */
+async function ensureStokKategoriTemizle(pool) {
+  await pool.request().query(`
+    IF OBJECT_ID(N'dbo.ElektrikMeta', N'U') IS NULL
+    BEGIN
+      CREATE TABLE dbo.ElektrikMeta (
+        Anahtar NVARCHAR(64) NOT NULL PRIMARY KEY,
+        Deger NVARCHAR(200) NULL
+      );
+    END
+  `);
+  const rs = await pool.request().query(`
+    SELECT Deger FROM dbo.ElektrikMeta WHERE Anahtar = N'stok_kategori_temiz_v1'
+  `);
+  if (String(rs.recordset[0]?.Deger || '') === '1') return;
+
+  await pool.request().query(`
+    UPDATE Stok
+    SET Kategori = NULL
+    WHERE LTRIM(RTRIM(ISNULL(Kategori, N''))) = N''
+       OR LTRIM(RTRIM(Kategori)) = N'Tedarik'
+  `);
+
+  const katRs = await pool.request().query(`
+    SELECT DISTINCT Kategori FROM Stok
+    WHERE Kategori IS NOT NULL AND LTRIM(RTRIM(Kategori)) <> N''
+  `);
+  for (const row of katRs.recordset || []) {
+    const raw = String(row.Kategori ?? '');
+    const norm = stokKategoriNormalize(raw);
+    if (norm === 'Diğer' && stokKategoriAnahtar(raw) === 'tedarik') {
+      await pool.request()
+        .input('Raw', sql.NVarChar(80), raw)
+        .query(`UPDATE Stok SET Kategori = NULL WHERE Kategori = @Raw`);
+      continue;
+    }
+    if (STOK_KATEGORI_SECENEK.includes(norm) && norm !== raw) {
+      await pool.request()
+        .input('Raw', sql.NVarChar(80), raw)
+        .input('Norm', sql.NVarChar(80), norm)
+        .query(`UPDATE Stok SET Kategori = @Norm WHERE Kategori = @Raw`);
+    }
+  }
+
+  await pool.request().query(`
+    MERGE dbo.ElektrikMeta AS t
+    USING (SELECT N'stok_kategori_temiz_v1' AS Anahtar, N'1' AS Deger) AS s
+    ON t.Anahtar = s.Anahtar
+    WHEN MATCHED THEN UPDATE SET Deger = s.Deger
+    WHEN NOT MATCHED THEN INSERT (Anahtar, Deger) VALUES (s.Anahtar, s.Deger);
+  `);
+  console.log('[Stok] Kategori temizliği uygulandı (Tedarik/boş/büyük harf).');
+}
+
 /** Satışta stok sıfır olsa bile düşürülür; gerekirse eksiye iner. */
 async function stokSatisDusurTxn(transaction, stokID, miktar) {
   const rqUpd = new sql.Request(transaction);
@@ -1060,6 +1143,188 @@ app.get('/api/stok/son-alis-fiyatlari', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ byStokID: {}, byUrunAdi: {} });
+  }
+});
+
+/** Son dönemde en çok satılan ürünler (cari satış + müşterisiz hızlı satış). */
+app.get('/api/stok/en-cok-satilan', async (req, res) => {
+  try {
+    const ymdOk = /^\d{4}-\d{2}-\d{2}$/;
+    const bugun = bugununTarihiStr();
+    const onceDate = new Date();
+    onceDate.setDate(onceDate.getDate() - 30);
+    const once =
+      `${onceDate.getFullYear()}-${String(onceDate.getMonth() + 1).padStart(2, '0')}-${String(onceDate.getDate()).padStart(2, '0')}`;
+    const baslangic = (req.query.baslangic && String(req.query.baslangic).trim()) || once;
+    const bitis = (req.query.bitis && String(req.query.bitis).trim()) || bugun;
+    if (!ymdOk.test(baslangic) || !ymdOk.test(bitis) || baslangic > bitis) {
+      return res.status(400).json({ success: false, message: 'Geçersiz tarih aralığı.' });
+    }
+    let limit = parseInt(String(req.query.limit || '10'), 10);
+    if (!Number.isFinite(limit) || limit < 1) limit = 10;
+    if (limit > 50) limit = 50;
+    let perKategori = parseInt(String(req.query.perKategori || '5'), 10);
+    if (!Number.isFinite(perKategori) || perKategori < 1) perKategori = 5;
+    if (perKategori > 15) perKategori = 15;
+
+    const iscilikMi = (ad, kategori) => {
+      const a = String(ad || '')
+        .toLocaleLowerCase('tr-TR')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const k = String(kategori || '')
+        .toLocaleLowerCase('tr-TR')
+        .trim();
+      if (k === 'hizmet') return true;
+      if (!a) return false;
+      if (a === 'işçilik' || a === 'iscilik') return true;
+      if (a.includes('işçilik') || a.includes('iscilik')) return true;
+      return false;
+    };
+
+    const pool = await poolPromise;
+    await ensureMusteriHareketTablosu(pool);
+    await ensureHizliSatisKayitTablosu(pool);
+
+    const map = new Map();
+    const ekle = (row, isaret) => {
+      const stokID = Number(row.StokID);
+      const ad = String(row.UrunAdi || '').trim();
+      if (!(Number.isInteger(stokID) && stokID > 0) && !ad) return;
+      const key =
+        Number.isInteger(stokID) && stokID > 0
+          ? `id:${stokID}`
+          : `ad:${ad.toLocaleLowerCase('tr-TR')}`;
+      const miktar = isaret * Number(row.Miktar || 0);
+      const tutar = isaret * Number(row.SatirTutar || 0);
+      if (!Number.isFinite(miktar) || miktar === 0) return;
+      const cur = map.get(key) || {
+        StokID: Number.isInteger(stokID) && stokID > 0 ? stokID : null,
+        UrunAdi: ad || '—',
+        ToplamAdet: 0,
+        ToplamTutar: 0,
+      };
+      if ((!cur.UrunAdi || cur.UrunAdi === '—') && ad) cur.UrunAdi = ad;
+      if (!cur.StokID && Number.isInteger(stokID) && stokID > 0) cur.StokID = stokID;
+      cur.ToplamAdet += miktar;
+      cur.ToplamTutar += tutar;
+      map.set(key, cur);
+    };
+
+    if (await tabloVarMi(pool, 'MusteriHareketDetaylari')) {
+      const rs = await pool.request()
+        .input('Baslangic', sql.NVarChar(10), baslangic)
+        .input('Bitis', sql.NVarChar(10), bitis)
+        .query(`
+          SELECT d.StokID, d.UrunAdi, d.Miktar, d.SatirTutar, h.Tur
+          FROM MusteriHareketDetaylari d
+          INNER JOIN MusteriHareketleri h ON h.HareketID = d.HareketID
+          WHERE LOWER(h.Tur) IN (N'satis', N'iade')
+            AND CAST(h.Tarih AS DATE) >= CAST(@Baslangic AS DATE)
+            AND CAST(h.Tarih AS DATE) <= CAST(@Bitis AS DATE)
+        `);
+      for (const r of rs.recordset || []) {
+        const tur = String(r.Tur || '').toLowerCase();
+        ekle(r, tur === 'iade' ? -1 : 1);
+      }
+    }
+
+    if (await tabloVarMi(pool, 'HizliSatisKayitDetaylari')) {
+      const rs = await pool.request()
+        .input('Baslangic', sql.NVarChar(10), baslangic)
+        .input('Bitis', sql.NVarChar(10), bitis)
+        .query(`
+          SELECT d.StokID, d.UrunAdi, d.Miktar, d.SatirTutar
+          FROM HizliSatisKayitDetaylari d
+          INNER JOIN HizliSatisKayitlari k ON k.KayitID = d.KayitID
+          WHERE ISNULL(k.IptalEdildi, 0) = 0
+            AND (k.MusteriID IS NULL OR k.MusteriID = 0)
+            AND CAST(k.Tarih AS DATE) >= CAST(@Baslangic AS DATE)
+            AND CAST(k.Tarih AS DATE) <= CAST(@Bitis AS DATE)
+        `);
+      for (const r of rs.recordset || []) ekle(r, 1);
+    }
+
+    const ham = [...map.values()]
+      .map((x) => ({
+        StokID: x.StokID,
+        UrunAdi: x.UrunAdi,
+        ToplamAdet: Math.round(Number(x.ToplamAdet) || 0),
+        ToplamTutar: Math.round((Number(x.ToplamTutar) || 0) * 100) / 100,
+      }))
+      .filter((x) => x.ToplamAdet > 0);
+
+    const stokIds = ham.map((x) => x.StokID).filter((id) => Number.isInteger(id) && id > 0);
+    const stokMap = new Map();
+    if (stokIds.length) {
+      const rq = pool.request();
+      const params = stokIds.map((id, i) => {
+        rq.input(`S${i}`, sql.Int, id);
+        return `@S${i}`;
+      });
+      const stRs = await rq.query(`
+        SELECT StokID, UrunAdi, Barkod, MevcutMiktar, Birim, Kategori
+        FROM Stok WHERE StokID IN (${params.join(',')})
+      `);
+      for (const r of stRs.recordset || []) stokMap.set(Number(r.StokID), r);
+    }
+
+    const zengin = ham
+      .map((x) => {
+        const s = x.StokID ? stokMap.get(x.StokID) : null;
+        const urunAdi = (s && s.UrunAdi) || x.UrunAdi;
+        const kategori = stokKategoriNormalize((s && s.Kategori) || '');
+        return {
+          StokID: x.StokID,
+          UrunAdi: urunAdi,
+          Barkod: s?.Barkod || null,
+          MevcutMiktar: s != null ? Number(s.MevcutMiktar || 0) : null,
+          Birim: s?.Birim || null,
+          Kategori: kategori,
+          ToplamAdet: x.ToplamAdet,
+          ToplamTutar: x.ToplamTutar,
+        };
+      })
+      .filter((x) => !iscilikMi(x.UrunAdi, x.Kategori))
+      .sort((a, b) => b.ToplamAdet - a.ToplamAdet || b.ToplamTutar - a.ToplamTutar);
+
+    const urunler = zengin.slice(0, limit).map((x, i) => ({ ...x, Sira: i + 1 }));
+
+    const byKat = new Map();
+    for (const x of zengin) {
+      const kat = stokKategoriNormalize(x.Kategori);
+      if (!byKat.has(kat)) byKat.set(kat, []);
+      byKat.get(kat).push(x);
+    }
+    const gruplar = [...byKat.entries()]
+      .map(([Kategori, items]) => {
+        const top = items
+          .slice()
+          .sort((a, b) => b.ToplamAdet - a.ToplamAdet || b.ToplamTutar - a.ToplamTutar)
+          .slice(0, perKategori)
+          .map((x, i) => ({ ...x, Sira: i + 1 }));
+        return {
+          Kategori,
+          ToplamAdet: top.reduce((s, r) => s + Number(r.ToplamAdet || 0), 0),
+          ToplamTutar: Math.round(top.reduce((s, r) => s + Number(r.ToplamTutar || 0), 0) * 100) / 100,
+          urunler: top,
+        };
+      })
+      .filter((g) => g.urunler.length > 0)
+      .sort((a, b) => b.ToplamAdet - a.ToplamAdet || b.ToplamTutar - a.ToplamTutar);
+
+    res.json({
+      success: true,
+      baslangic,
+      bitis,
+      limit,
+      perKategori,
+      urunler,
+      gruplar,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'En çok satılanlar alınamadı.' });
   }
 });
 
@@ -4276,6 +4541,7 @@ function gunlukIslemSatirSiraDegeri(r) {
   if (r.SatirTur === 'mal_alim_kalem') return Number(r.KalemSira) || 0;
   if (r.SatirTur === 'satis') return 40;
   if (r.SatirTur === 'tahsilat' || r.SatirTur === 'mal_alim_odeme') return 90;
+  if (r.SatirTur === 'eksik_odeme') return 95;
   return 50;
 }
 
@@ -5540,6 +5806,21 @@ async function gunlukPerakendeSatislariniEkle(pool, basTrim, bitTrim, ozet, isle
           Kaynak: 'satis_tahsilat',
         });
       }
+      // Perakendede tahsilat < sepet: kalan müşterisiz «eksik ödeme» (eski kayıtlarda görünür)
+      if (!veresiyeMi && kalan > 0.009) {
+        islemler.push({
+          ...ortak,
+          LogID: grupLogID,
+          TurEtiket: 'Eksik ödeme',
+          SatirTur: 'eksik_odeme',
+          Odeme: '—',
+          Tutar: kalan,
+          KisaAciklama: '',
+          Aciklama: '',
+          Yon: 'giris',
+          Kaynak: 'satis_eksik',
+        });
+      }
     }
   } catch (err) {
     console.warn('Günlük perakende satışları okunamadı:', err.message);
@@ -6284,16 +6565,39 @@ app.get('/api/ozet', async (req, res) => {
       'SELECT COUNT(*) AS Sayi FROM Stok WHERE MevcutMiktar <= ISNULL(KritikEsik, 5)'
     );
 
+    let toplamTedarikci = 0;
+    let tedarikciBorcToplam = 0;
+    if (await tabloVarMi(pool, 'Tedarikciler')) {
+      const ted = await pool.request().query(`
+        SELECT
+          COUNT(*) AS Sayi,
+          ISNULL(SUM(CASE WHEN Bakiye > 0 THEN Bakiye ELSE 0 END), 0) AS BorcToplam
+        FROM Tedarikciler
+      `);
+      toplamTedarikci = ted.recordset[0]?.Sayi || 0;
+      tedarikciBorcToplam = Number(ted.recordset[0]?.BorcToplam || 0);
+    }
+
+    const stokDegerRs = await pool.request().query(`
+      SELECT ISNULL(SUM(ISNULL(MevcutMiktar, 0) * ISNULL(SatisFiyati, 0)), 0) AS StokDeger
+      FROM Stok
+    `);
+    const stokDegerToplam = Number(stokDegerRs.recordset[0]?.StokDeger || 0);
+
     const bugun = bugununTarihiStr();
     const gunluk = await gunlukIslemDetay(pool, bugun, bugun);
 
     res.json({
       ToplamAlacak: alacak.recordset[0].Toplam || 0,
       GunlukCiro: gunluk.ozet.toplamVeresiyesiz,
+      GunlukVeresiye: gunluk.ozet.veresiye || 0,
       ToplamMusteri: musteri.recordset[0].Sayi || 0,
       AcikServis: servis.recordset[0].Sayi || 0,
       ToplamStokUrun: stokToplam.recordset[0].Sayi || 0,
       KritikStok: stokKritik.recordset[0].Sayi || 0,
+      ToplamTedarikci: toplamTedarikci,
+      TedarikciBorcToplam: tedarikciBorcToplam,
+      StokDegerToplam: stokDegerToplam,
     });
   } catch (err) {
     console.error(err);
@@ -7566,7 +7870,7 @@ app.post('/api/tedarikci/alim', async (req, res) => {
             const insSt = await rqSt.query(`
               INSERT INTO Stok (UrunAdi, Kategori, Barkod, AlisFiyati, SatisFiyati, MevcutMiktar, Birim)
               OUTPUT INSERTED.StokID
-              VALUES (@UrunAdi, N'Tedarik', NULL, @AlisFiyati, @SatisFiyati, @Miktar, @Birim)
+              VALUES (@UrunAdi, NULL, NULL, @AlisFiyati, @SatisFiyati, @Miktar, @Birim)
             `);
             kayitStokID = insSt.recordset[0].StokID;
           } else {
@@ -8774,6 +9078,7 @@ async function sunucuyuBaslat({ exitOnError = true, openBrowser } = {}) {
     await ensureSistemAyarTablosu(pool);
     await ensureStokSeviyeAlanlari(pool);
     await ensureIscilikBedeliStokKarti(pool);
+    await ensureStokKategoriTemizle(pool);
     await ensureKullaniciSifreKolonu(pool);
     await ensureTeklifTablolari(pool);
     const server = app.listen(PORT, HOST, () => {

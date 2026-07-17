@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
@@ -256,21 +256,162 @@
             grid-template-columns: 1fr;
             gap: 0.9rem;
         }
+        .ozet-rozet-dortlu {
+            position: relative;
+        }
+        .ozet-rozet-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.9rem;
+        }
         @media (min-width: 768px) {
             .ozet-kart-grid {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
-            .ozet-kart-grid .ozet-kart-ucuncu {
-                grid-column: 1 / 2;
+            .ozet-rozet-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
         }
+        .ozet-rozet-grid > .ozet-kart {
+            min-height: 0;
+            height: 100%;
+        }
         .ozet-rozet-kutu .card-body {
+            display: flex;
+            flex-direction: column;
             padding: 1.45rem 1.25rem !important;
-            min-height: 124px;
+            min-height: 168px;
+            height: 100%;
+        }
+        .ozet-rozet-govde {
+            flex: 1 1 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.5rem;
+            min-height: 0;
+        }
+        .ozet-rozet-notlar {
+            flex: 0 0 auto;
+            margin-top: auto;
+            padding-top: 0.45rem;
+            border-top: 1px solid rgba(15, 23, 42, 0.12);
+            font-size: 0.78rem;
+            line-height: 1.2;
+            color: rgba(15, 23, 42, 0.78);
+            min-height: 1.35rem;
+        }
+        .ozet-rozet-notlar strong {
+            font-variant-numeric: tabular-nums;
+            font-weight: 700;
+            color: #111827;
+        }
+        .ozet-rozet-notlar.bos {
+            border-top-color: transparent;
+            visibility: hidden;
+        }
+        .bg-gradient-stok .ozet-rozet-notlar,
+        .bg-gradient-primary .ozet-rozet-notlar {
+            border-top-color: rgba(255, 255, 255, 0.28);
+            color: rgba(255, 255, 255, 0.88);
+        }
+        .bg-gradient-stok .ozet-rozet-notlar strong,
+        .bg-gradient-primary .ozet-rozet-notlar strong {
+            color: #fff;
+        }
+        .ozet-rakam-toggle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 6;
+            width: 2.4rem;
+            height: 2.4rem;
+            border-radius: 999px;
+            border: 2px solid #fff;
+            background: #0f172a;
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(15, 23, 42, 0.28);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            cursor: pointer;
+        }
+        .ozet-rakam-toggle:hover {
+            background: #1e293b;
+            color: #fff;
+        }
+        .ozet-rakam-toggle i { font-size: 0.85rem; }
+        .ozet-rozet-grid.ozet-rakam-gizli .ozet-rozet-para {
+            visibility: hidden;
+        }
+        @media (max-width: 767.98px) {
+            .ozet-rakam-toggle {
+                top: auto;
+                bottom: -0.15rem;
+                left: auto;
+                right: 0.15rem;
+                transform: none;
+            }
+        }
+        .ozet-encok-kart {
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            background: #fff;
+        }
+        .ozet-encok-kart .ozet-encok-baslik {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: #0f172a;
+            margin: 0;
+        }
+        .ozet-encok-liste {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        .ozet-encok-liste li {
+            display: flex;
+            align-items: baseline;
+            gap: 0.4rem;
+            padding: 0.28rem 0;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.8rem;
+        }
+        .ozet-encok-liste li:last-child { border-bottom: 0; }
+        .ozet-encok-liste .sira {
+            flex: 0 0 1.1rem;
+            color: #64748b;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+        .ozet-encok-liste .urun {
+            flex: 1 1 auto;
+            min-width: 0;
+            color: #0f172a;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .ozet-encok-liste .adet {
+            flex: 0 0 auto;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            color: #15803d;
+        }
+        #enCokSatanModal tr.ecs-kat-baslik td {
+            background: #f1f5f9;
+            color: #0f172a;
+            font-weight: 700;
+            font-size: 0.82rem;
+            padding-top: 0.55rem;
+            padding-bottom: 0.45rem;
+            border-bottom: 1px solid #e2e8f0;
         }
         .ozet-rozet-tikla { cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease; }
         .ozet-rozet-tikla:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important; }
-        .gunluk-ozet-kutu { border-radius: 12px; padding: 0.65rem 0.85rem; font-size: 0.9rem; }
+        .gunluk-ozet-kutu { border-radius: 6px; padding: 0.2rem 0.4rem; font-size: 0.78rem; }
         #gunlukIslemModal .modal-dialog {
             max-width: min(96vw, 1480px);
             width: 96vw;
@@ -281,6 +422,22 @@
             height: 100%;
             display: flex;
             flex-direction: column;
+            background: #f1f5f9;
+        }
+        #gunlukIslemModal .gunluk-modal-ust {
+            flex: 0 0 auto;
+            background: #fff;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 0.35rem 0.75rem;
+        }
+        #gunlukIslemModal .gunluk-modal-ust .modal-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #0f172a;
+            letter-spacing: -0.01em;
+        }
+        #gunlukIslemModal .gunluk-modal-ust .gunluk-modal-altbaslik {
+            display: none;
         }
         #gunlukIslemModal .modal-body {
             flex: 1 1 auto;
@@ -288,73 +445,207 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            gap: 0.65rem;
+            gap: 0.35rem;
+            padding: 0.4rem 0.75rem !important;
+            background: #f1f5f9;
         }
-        #gunlukIslemModal .gunluk-islem-govde {
-            flex: 1 1 auto;
-            min-height: 0;
+        #gunlukIslemModal .gunluk-filtre-satir {
+            flex: 0 0 auto;
             display: flex;
-            flex-direction: column;
-            gap: 0.65rem;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            gap: 0.3rem 0.45rem;
         }
-        @media (min-width: 992px) {
-            #gunlukIslemModal .gunluk-islem-govde {
-                flex-direction: row;
-                align-items: stretch;
-            }
+        #gunlukIslemModal .gunluk-filtre-satir .form-control {
+            border-radius: 5px;
+            border-color: #cbd5e1;
+            min-width: 8rem;
+            padding-top: 0.15rem;
+            padding-bottom: 0.15rem;
+            font-size: 0.8rem;
         }
-        #gunlukIslemModal .gunluk-ozet-yan {
+        #gunlukIslemModal .gunluk-ozet-ust {
             flex: 0 0 auto;
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.45rem;
-            align-content: start;
-            overflow-x: auto;
-            overflow-y: auto;
-            padding-bottom: 0.15rem;
-            -webkit-overflow-scrolling: touch;
+            grid-template-columns: 1fr;
+            gap: 0.3rem;
         }
         @media (min-width: 992px) {
-            #gunlukIslemModal .gunluk-ozet-yan {
-                width: 22.5rem;
-                flex: 0 0 22.5rem;
-                overflow-x: hidden;
-                padding-bottom: 0;
+            #gunlukIslemModal .gunluk-ozet-ust {
+                grid-template-columns: 1fr 1fr;
             }
         }
-        #gunlukIslemModal .gunluk-ozet-sutun {
+        #gunlukIslemModal .gunluk-ozet-grup {
+            border-radius: 6px;
+            padding: 0.2rem 0.3rem 0.25rem;
+            border: 1px solid transparent;
+        }
+        #gunlukIslemModal .gunluk-ozet-grup-gelir {
+            background: #ecfdf5;
+            border-color: #a7f3d0;
+        }
+        #gunlukIslemModal .gunluk-ozet-grup-gider {
+            background: #fff1f2;
+            border-color: #fecdd3;
+        }
+        #gunlukIslemModal .gunluk-ozet-grup-baslik {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.58rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            margin-bottom: 0.15rem;
+            line-height: 1;
+        }
+        #gunlukIslemModal .gunluk-ozet-grup-gelir .gunluk-ozet-grup-baslik { color: #047857; }
+        #gunlukIslemModal .gunluk-ozet-grup-gider .gunluk-ozet-grup-baslik { color: #be123c; }
+        #gunlukIslemModal .gunluk-ozet-grup-baslik i { font-size: 0.62rem; opacity: 0.9; }
+        #gunlukIslemModal .gunluk-ozet-rozetler {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.2rem;
+            align-items: stretch;
+        }
+        @media (min-width: 992px) {
+            #gunlukIslemModal .gunluk-ozet-rozetler {
+                flex-wrap: nowrap;
+            }
+        }
+        #gunlukIslemModal .gunluk-ozet-kutu {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 5px;
+            min-width: 0;
+            flex: 1 1 0;
             display: flex;
             flex-direction: column;
-            gap: 0.4rem;
-            min-width: 0;
+            align-items: center;
+            justify-content: center;
+            gap: 0.08rem;
+            padding: 0.22rem 0.28rem;
+            text-align: center;
+            white-space: normal;
         }
-        #gunlukIslemModal .gunluk-ozet-yan .gunluk-ozet-kutu {
-            min-width: 0;
-            width: 100%;
-            padding: 0.45rem 0.55rem;
-            text-align: left;
-        }
-        #gunlukIslemModal .gunluk-ozet-yan .gunluk-ozet-baslik {
-            font-size: 0.68rem;
+        #gunlukIslemModal .gunluk-ozet-grup-gelir .gunluk-ozet-kutu { border-color: #d1fae5; }
+        #gunlukIslemModal .gunluk-ozet-grup-gider .gunluk-ozet-kutu { border-color: #fecaca; }
+        #gunlukIslemModal .gunluk-ozet-kutu .gunluk-ozet-etiket {
+            font-size: 0.58rem;
             font-weight: 700;
-            letter-spacing: 0.03em;
+            color: #0f172a;
+            line-height: 1.15;
+            margin: 0;
+            max-width: 100%;
+        }
+        #gunlukIslemModal .gunluk-ozet-kutu .gunluk-ozet-deger {
+            font-size: 0.84rem;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            line-height: 1.1;
+            color: #0f172a;
+            margin: 0;
+        }
+        #gunlukIslemModal .gunluk-ozet-kutu.ozet-vurgulu {
+            border-width: 1px;
+            flex: 1.15 1 0;
+            min-width: 0;
+        }
+        #gunlukIslemModal .gunluk-ozet-grup-gelir .ozet-vurgulu { border-color: #34d399; }
+        #gunlukIslemModal .gunluk-ozet-grup-gider .ozet-vurgulu { border-color: #fb7185; }
+        #gunlukIslemModal .gunluk-ozet-tikla {
+            cursor: pointer;
+            transition: box-shadow 0.12s ease, transform 0.12s ease;
+        }
+        #gunlukIslemModal .gunluk-ozet-tikla:hover {
+            box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.08);
+            transform: translateY(-1px);
+        }
+        #gunlukOzetDetayModal .gunluk-detay-blok {
+            border-radius: 10px;
+            padding: 0.75rem 0.85rem;
+            border: 1px solid #e2e8f0;
+            background: #fff;
+            height: 100%;
+        }
+        #gunlukOzetDetayModal .gunluk-detay-blok.gelir {
+            border-color: #a7f3d0;
+            background: #f0fdf4;
+        }
+        #gunlukOzetDetayModal .gunluk-detay-blok.gider {
+            border-color: #fecdd3;
+            background: #fff1f2;
+        }
+        #gunlukOzetDetayModal .gunluk-detay-baslik {
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
             text-transform: uppercase;
-            color: #64748b;
-            padding: 0.15rem 0.1rem 0.05rem;
-            flex: 0 0 auto;
+            margin-bottom: 0.55rem;
         }
-        #gunlukIslemModal .gunluk-ozet-yan .gunluk-ozet-alt {
-            font-size: 0.68rem;
-            color: #64748b;
-            line-height: 1.25;
-            padding: 0.15rem 0.1rem 0.35rem;
+        #gunlukOzetDetayModal .gunluk-detay-blok.gelir .gunluk-detay-baslik { color: #047857; }
+        #gunlukOzetDetayModal .gunluk-detay-blok.gider .gunluk-detay-baslik { color: #be123c; }
+        #gunlukOzetDetayModal .gunluk-detay-satir {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.75rem;
+            font-size: 0.86rem;
+            padding: 0.28rem 0;
+            border-bottom: 1px dashed #e2e8f0;
         }
+        #gunlukOzetDetayModal .gunluk-detay-satir:last-child { border-bottom: 0; }
+        #gunlukOzetDetayModal .gunluk-detay-satir.toplam {
+            font-weight: 700;
+            border-bottom: 0;
+            border-top: 1px solid #cbd5e1;
+            margin-top: 0.25rem;
+            padding-top: 0.45rem;
+        }
+        #gunlukIslemModal .gunluk-ozet-kutu .gunluk-ozet-alt {
+            font-size: 0.5rem;
+            color: #64748b;
+            line-height: 1.1;
+            margin: 0;
+            white-space: nowrap;
+        }
+        #gunlukIslemModal .gunluk-ozet-ciro {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.02rem;
+            line-height: 1;
+        }
+        #gunlukIslemModal .gunluk-ozet-ciro span { font-variant-numeric: tabular-nums; }
         #gunlukIslemModal .gunluk-liste-yan {
             flex: 1 1 auto;
             min-width: 0;
             min-height: 0;
             display: flex;
             flex-direction: column;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #dbe4ee;
+            background: #fff;
+            box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+        }
+        #gunlukIslemModal .gunluk-liste-baslik {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.4rem;
+            padding: 0.28rem 0.65rem;
+            color: #fff;
+            background: linear-gradient(120deg, #166534 0%, #15803d 55%, #0f766e 100%);
+        }
+        #gunlukIslemModal .gunluk-liste-baslik h6 {
+            margin: 0;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+        }
+        #gunlukIslemModal .gunluk-liste-baslik small {
+            display: none;
         }
         #gunlukIslemModal .gunluk-islem-tablo-wrap {
             flex: 1 1 auto;
@@ -362,6 +653,10 @@
             max-height: none !important;
             overflow: auto;
             height: 100%;
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+            background: #f1f5f9;
         }
         .gunluk-islem-tablo-wrap { box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06); }
         #gunlukIslemTablo thead th {
@@ -410,31 +705,86 @@
             color: #e65100 !important;
             font-weight: 700;
         }
-        #gunlukIslemTablo tr.gunluk-satir-mal-alim td:first-child {
-            box-shadow: inset 3px 0 0 #f9a825;
-        }
-        #gunlukIslemTablo tr.gunluk-satir-veresiye td:first-child {
-            box-shadow: inset 3px 0 0 #ff9800;
-        }
-        #gunlukIslemTablo tr.gunluk-satir-odendi td:first-child {
-            box-shadow: inset 3px 0 0 #43a047;
-        }
+        /* Sol şerit kaldırıldı — çerçeve ile ayrım */
+        #gunlukIslemTablo tr.gunluk-satir-mal-alim td:first-child,
+        #gunlukIslemTablo tr.gunluk-satir-veresiye td:first-child,
+        #gunlukIslemTablo tr.gunluk-satir-odendi td:first-child,
         #gunlukIslemTablo tr.gunluk-satir-kasa-cikis td:first-child {
-            box-shadow: inset 3px 0 0 #ef5350;
+            box-shadow: none;
         }
-        /* Günlük: satır fon boyası yok — anlam şerit / rozet / yazı ile */
-        #gunlukIslemTablo tr.gunluk-grup-tahsilat td,
-        #gunlukIslemTablo tr.gunluk-tahsilat-satir td,
-        #gunlukIslemTablo tr.gunluk-satir-veresiye td,
-        #gunlukIslemTablo tr.gunluk-satir-odendi td,
-        #gunlukIslemTablo tr.gunluk-satir-kasa-cikis td,
-        #gunlukIslemTablo tr.gunluk-satir-mal-alim td {
-            background: transparent !important;
+        /* Konu fonu + 2 ton koyu kibar çerçeve */
+        #gunlukIslemTablo {
+            border-collapse: separate;
+            border-spacing: 0;
         }
-        #gunlukIslemTablo tr.gunluk-grup-tahsilat:hover td,
-        #gunlukIslemTablo tr.gunluk-tahsilat-satir:hover td,
-        #gunlukIslemTablo tr.gunluk-kalem-satir:hover td {
+        #gunlukIslemTablo tbody tr.gunluk-tema-satis > td {
+            background-color: #eefaf1 !important;
+            --gunluk-cerceve: #9dcfb0;
+        }
+        #gunlukIslemTablo tbody tr.gunluk-tema-gider > td {
+            background-color: #fef1f2 !important;
+            --gunluk-cerceve: #ebacb3;
+        }
+        #gunlukIslemTablo tbody tr.gunluk-tema-mal-alim > td {
+            background-color: #fff8e7 !important;
+            --gunluk-cerceve: #e2c98a;
+        }
+        #gunlukIslemTablo tbody tr.gunluk-tema-diger > td {
             background-color: #f8fafc !important;
+            --gunluk-cerceve: #cbd5e1;
+        }
+        #gunlukIslemTablo tbody tr.gunluk-tema-satis.gunluk-grup-tahsilat > td,
+        #gunlukIslemTablo tbody tr.gunluk-tema-satis.gunluk-tahsilat-satir > td {
+            background-color: #e2f7e8 !important;
+        }
+        #gunlukIslemTablo tbody tr[class*="gunluk-tema-"] > td:first-child {
+            border-left: 1px solid var(--gunluk-cerceve) !important;
+        }
+        #gunlukIslemTablo tbody tr[class*="gunluk-tema-"] > td:last-child {
+            border-right: 1px solid var(--gunluk-cerceve) !important;
+        }
+        #gunlukIslemTablo tbody tr.gunluk-grup-ust > td {
+            border-top: 1px solid var(--gunluk-cerceve) !important;
+            padding-top: 0.55rem;
+            box-shadow: 0 -7px 0 #f1f5f9;
+        }
+        #gunlukIslemTablo tbody tr.gunluk-grup-ust:first-child > td {
+            box-shadow: none;
+            padding-top: 0.45rem;
+        }
+        #gunlukIslemTablo tbody tr.gunluk-grup-ust > td:first-child {
+            border-top-left-radius: 7px;
+        }
+        #gunlukIslemTablo tbody tr.gunluk-grup-ust > td:last-child {
+            border-top-right-radius: 7px;
+        }
+        #gunlukIslemTablo tbody tr.gunluk-islem-grup-son > td {
+            border-bottom: 1px solid var(--gunluk-cerceve) !important;
+            padding-bottom: 0.55rem;
+            box-shadow: none;
+        }
+        #gunlukIslemTablo tbody tr.gunluk-islem-grup-son > td:first-child {
+            border-bottom-left-radius: 7px;
+        }
+        #gunlukIslemTablo tbody tr.gunluk-islem-grup-son > td:last-child {
+            border-bottom-right-radius: 7px;
+        }
+        #gunlukIslemTablo tbody tr.gunluk-islem-grup-ic > td {
+            border-bottom: 1px solid rgba(15, 23, 42, 0.05) !important;
+        }
+        #gunlukIslemTablo tbody tr.gunluk-tema-satis:hover > td,
+        #gunlukIslemTablo tbody tr.gunluk-tema-satis.gunluk-kalem-satir:hover > td {
+            background-color: #e4f6e9 !important;
+        }
+        #gunlukIslemTablo tbody tr.gunluk-tema-gider:hover > td {
+            background-color: #fde7ea !important;
+        }
+        #gunlukIslemTablo tbody tr.gunluk-tema-mal-alim:hover > td {
+            background-color: #fff1d6 !important;
+        }
+        #gunlukIslemTablo tbody tr.gunluk-tema-satis.gunluk-grup-tahsilat:hover > td,
+        #gunlukIslemTablo tbody tr.gunluk-tema-satis.gunluk-tahsilat-satir:hover > td {
+            background-color: #d5f0dc !important;
         }
         .ozet-rozet-kutu .ozet-rozet-ust {
             font-size: 1.65rem;
@@ -456,7 +806,7 @@
         @media (min-width: 992px) {
             .ozet-rozet-kutu .ozet-rozet-ust { font-size: 1.95rem; }
             .ozet-rozet-kutu .fa-3x { font-size: 2.85rem !important; }
-            .ozet-rozet-kutu .card-body { min-height: 148px; padding: 1.65rem 1.4rem !important; }
+            .ozet-rozet-kutu .card-body { min-height: 176px; padding: 1.65rem 1.4rem !important; }
         }
         .hizli-sepet-wrap table thead th {
             font-size: 0.72rem;
@@ -764,6 +1114,27 @@
             color: #b02a37;
             font-weight: 600;
         }
+        #gunlukIslemTablo .gunluk-grup-toplam,
+        #mdHareketTablo .gunluk-grup-toplam,
+        #mrHareketTablo .gunluk-grup-toplam {
+            margin-top: 0.3rem;
+            font-size: 0.8rem;
+            font-weight: 800;
+            color: #9f1239;
+            letter-spacing: 0.01em;
+            white-space: nowrap;
+        }
+        #gunlukIslemTablo .gunluk-grup-toplam-satir,
+        #mdHareketTablo .gunluk-grup-toplam-satir,
+        #mrHareketTablo .gunluk-grup-toplam-satir {
+            margin-top: 0.2rem;
+            padding-top: 0.2rem;
+            border-top: 1px dashed #f1aeb5;
+            font-size: 0.82rem;
+            font-weight: 800;
+            color: #9f1239;
+            white-space: nowrap;
+        }
         #gunlukIslemTablo .gunluk-mal-alim-kalem .gunluk-kalem-urun,
         #mdHareketTablo .gunluk-mal-alim-kalem .gunluk-kalem-urun,
         #mrHareketTablo .gunluk-mal-alim-kalem .gunluk-kalem-urun {
@@ -780,20 +1151,17 @@
         #mrHareketTablo tr.gunluk-islem-grup-ic td {
             border-bottom: 1px solid #e8eef4 !important;
         }
-        #gunlukIslemTablo tr.gunluk-islem-grup-son td,
         #mdHareketTablo tr.gunluk-islem-grup-son td,
         #mrHareketTablo tr.gunluk-islem-grup-son td {
             border-bottom: 3px solid #334155 !important;
             box-shadow: none;
             padding-bottom: 0.55rem;
         }
-        #gunlukIslemTablo tr.gunluk-grup-ust td,
         #mdHareketTablo tr.gunluk-grup-ust td,
         #mrHareketTablo tr.gunluk-grup-ust td {
             background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
             padding-top: 0.6rem;
         }
-        #gunlukIslemTablo tr.gunluk-grup-ust:not(:first-child) td,
         #mdHareketTablo tr.gunluk-grup-ust:not(:first-child) td,
         #mrHareketTablo tr.gunluk-grup-ust:not(:first-child) td {
             border-top: 2px solid #e2e8f0;
@@ -801,25 +1169,30 @@
         #gunlukIslemTablo tr.gunluk-grup-tahsilat td,
         #mdHareketTablo tr.gunluk-grup-tahsilat td,
         #mrHareketTablo tr.gunluk-grup-tahsilat td {
-            background: #f0fdf4;
             vertical-align: middle;
         }
-        #gunlukIslemTablo td.gunluk-hucre-bos,
+        #mdHareketTablo tr.gunluk-grup-tahsilat td,
+        #mrHareketTablo tr.gunluk-grup-tahsilat td {
+            background: #f0fdf4;
+        }
+        #gunlukIslemTablo td.gunluk-hucre-bos {
+            background: inherit !important;
+        }
         #mdHareketTablo td.gunluk-hucre-bos,
         #mrHareketTablo td.gunluk-hucre-bos {
             background: transparent !important;
         }
-        #gunlukIslemTablo tr.gunluk-kalem-satir:hover td,
         #mdHareketTablo tr.gunluk-kalem-satir:hover td,
         #mrHareketTablo tr.gunluk-kalem-satir:hover td {
             background-color: #f1f5f9;
         }
-        #gunlukIslemTablo tr.gunluk-grup-tahsilat:hover td,
         #mdHareketTablo tr.gunluk-grup-tahsilat:hover td,
         #mrHareketTablo tr.gunluk-grup-tahsilat:hover td {
             background-color: #dcfce7;
         }
-        #gunlukIslemTablo tr.gunluk-grup-tahsilat:hover .gunluk-tur-tahsilat .badge,
+        #gunlukIslemTablo tr.gunluk-grup-tahsilat:hover .gunluk-tur-tahsilat .badge {
+            box-shadow: 0 0 0 3px #d5f0dc;
+        }
         #mdHareketTablo tr.gunluk-grup-tahsilat:hover .gunluk-tur-tahsilat .badge,
         #mrHareketTablo tr.gunluk-grup-tahsilat:hover .gunluk-tur-tahsilat .badge {
             box-shadow: 0 0 0 3px #dcfce7;
@@ -843,7 +1216,12 @@
         #mrHareketTablo tr.gunluk-grup-tahsilat .gunluk-tur-tahsilat {
             text-align: center;
         }
-        #gunlukIslemTablo tr.gunluk-grup-tahsilat .gunluk-tur-tahsilat .badge,
+        #gunlukIslemTablo tr.gunluk-grup-tahsilat .gunluk-tur-tahsilat .badge {
+            position: relative;
+            z-index: 1;
+            margin-left: 0;
+            box-shadow: 0 0 0 3px #e2f7e8;
+        }
         #mdHareketTablo tr.gunluk-grup-tahsilat .gunluk-tur-tahsilat .badge,
         #mrHareketTablo tr.gunluk-grup-tahsilat .gunluk-tur-tahsilat .badge {
             position: relative;
@@ -871,19 +1249,24 @@
             margin-left: 0;
             margin-right: 0;
         }
-        #gunlukIslemTablo tr.gunluk-tahsilat-satir td,
         #mdHareketTablo tr.gunluk-tahsilat-satir td,
         #mrHareketTablo tr.gunluk-tahsilat-satir td {
             background: #f0fdf4;
             vertical-align: middle;
         }
-        #gunlukIslemTablo tr.gunluk-tahsilat-satir.gunluk-islem-grup-son td,
+        #gunlukIslemTablo tr.gunluk-tahsilat-satir td {
+            vertical-align: middle;
+        }
         #mdHareketTablo tr.gunluk-tahsilat-satir.gunluk-islem-grup-son td,
         #mrHareketTablo tr.gunluk-tahsilat-satir.gunluk-islem-grup-son td {
             border-bottom: 1px solid #cbd5e1 !important;
             box-shadow: none !important;
         }
-        #gunlukIslemTablo tr.gunluk-tahsilat-satir .gunluk-tur-tahsilat .badge,
+        #gunlukIslemTablo tr.gunluk-tahsilat-satir .gunluk-tur-tahsilat .badge {
+            position: relative;
+            z-index: 1;
+            box-shadow: 0 0 0 3px #e2f7e8;
+        }
         #mdHareketTablo tr.gunluk-tahsilat-satir .gunluk-tur-tahsilat .badge,
         #mrHareketTablo tr.gunluk-tahsilat-satir .gunluk-tur-tahsilat .badge {
             position: relative;
@@ -1352,18 +1735,9 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
+                <ul class="navbar-nav ms-auto align-items-lg-center">
                     <li class="nav-item">
-                        <a class="nav-link text-white px-3" onclick="menuyuGoster('ozet')"><i class="fa-solid fa-chart-pie"></i> Özet Paneli</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link text-white px-3" onclick="menuyuGoster('stok')"><i class="fa-solid fa-boxes-stacked"></i> Stok</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link text-white px-3" onclick="menuyuGoster('musteri')"><i class="fa-solid fa-users"></i> Müşteriler</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link text-white px-3" onclick="menuyuGoster('tedarikci')"><i class="fa-solid fa-truck-field"></i> Tedarikçi</a>
+                        <a class="nav-link text-white px-3" onclick="menuyuGoster('ozet')"><i class="fa-solid fa-chart-pie"></i> Ana Sayfa</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link text-white px-3" onclick="menuyuGoster('gider')"><i class="fa-solid fa-money-bill-wave"></i> Giderler</a>
@@ -1371,23 +1745,35 @@
                     <li class="nav-item">
                         <a class="nav-link text-white px-3" onclick="menuyuGoster('servis')"><i class="fa-solid fa-screwdriver-wrench"></i> Servis & Arıza</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link text-white px-3" onclick="menuyuGoster('log'); loglariGetir();"><i class="fa-solid fa-clock-rotate-left"></i> Loglar</a>
+                    <li class="nav-item dropdown ms-lg-3 border-start border-light border-opacity-25 ps-lg-3">
+                        <button type="button" class="btn btn-sm btn-outline-light fw-bold dropdown-toggle" id="kullaniciMenuBtn"
+                                data-bs-toggle="dropdown" aria-expanded="false" title="Hesap menüsü">
+                            <i class="fa-solid fa-user me-1"></i><span id="aktifKullaniciIsmi">Yükleniyor...</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="kullaniciMenuBtn">
+                            <li>
+                                <button type="button" class="dropdown-item" onclick="profilModalAc()">
+                                    <i class="fa-solid fa-key me-2 text-secondary"></i>Şifre ayarları
+                                </button>
+                            </li>
+                            <li>
+                                <button type="button" class="dropdown-item" onclick="surumModalAc()">
+                                    <i class="fa-solid fa-tag me-2 text-secondary"></i>Sürüm
+                                </button>
+                            </li>
+                            <li>
+                                <button type="button" class="dropdown-item" onclick="ayarlarModalAc()">
+                                    <i class="fa-solid fa-gear me-2 text-secondary"></i>Ayarlar
+                                </button>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <button type="button" class="dropdown-item text-danger" onclick="cikisYap()">
+                                    <i class="fa-solid fa-power-off me-2"></i>Çıkış
+                                </button>
+                            </li>
+                        </ul>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link text-white px-3" onclick="musteriRaporlarModalAc()"><i class="fa-solid fa-file-lines"></i> Raporlar</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link text-white px-3" onclick="karModalAc()"><i class="fa-solid fa-chart-column"></i> Kâr Ekranı</a>
-                    </li>
-                <div class="d-flex align-items-center ms-3 border-start ps-3 gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-light fw-bold" onclick="profilModalAc()" title="Ad/şifre düzenle">
-                        <i class="fa-solid fa-user"></i> <span id="aktifKullaniciIsmi">Yükleniyor...</span>
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-light fw-bold" onclick="surumModalAc()"><i class="fa-solid fa-tag"></i> Sürüm</button>
-                    <button type="button" class="btn btn-sm btn-warning fw-bold" onclick="ayarlarModalAc()"><i class="fa-solid fa-gear"></i> Ayarlar</button>
-                    <button class="btn btn-sm btn-danger fw-bold" onclick="cikisYap()"><i class="fa-solid fa-power-off"></i> Çıkış</button>
-                </div>
                 </ul>
             </div>
         </div>
@@ -1496,19 +1882,22 @@
 
             <div class="col-12 col-lg-5 col-xl-4">
                 <div class="ozet-kart-grid">
+                    <div class="ozet-rozet-dortlu" style="grid-column: 1 / -1;">
+                        <div class="ozet-rozet-grid" id="ozetRozetGrid">
                     <div class="card ozet-kart ozet-rozet-kutu ozet-rozet-tikla border-0 shadow-sm overflow-hidden"
                          role="button" tabindex="0"
                          onclick="gunlukIslemModalAc()" onkeydown="if(event.key==='Enter'||event.key===' ')gunlukIslemModalAc()"
                          title="Tıklayınca günlük işlem özeti ve tarih filtresi">
                         <div class="card-body bg-gradient-alacak position-relative">
                             <span class="badge bg-white bg-opacity-25 text-white position-absolute top-0 end-0 mt-2 me-2">Bugün</span>
-                            <div class="d-flex justify-content-between align-items-center gap-2">
+                            <div class="ozet-rozet-govde">
                                 <div class="min-w-0 flex-grow-1">
-                                    <div class="ozet-rozet-ust text-white" id="kutuGunlukCiro">0.00 ₺</div>
+                                    <div class="ozet-rozet-ust text-white" id="kutuGunlukCiro">0,00 ₺</div>
                                     <div class="ozet-rozet-alt text-white" style="opacity: 0.85;">Bugün</div>
                                 </div>
                                 <div class="text-white opacity-90 flex-shrink-0 align-self-center"><i class="fa-solid fa-chart-line fa-3x"></i></div>
                             </div>
+                            <div class="ozet-rozet-notlar bos" aria-hidden="true"><strong>—</strong></div>
                         </div>
                     </div>
                     <div class="card ozet-kart ozet-rozet-kutu ozet-rozet-tikla border-0 shadow-sm overflow-hidden"
@@ -1517,29 +1906,62 @@
                          title="Müşteri listesini aç">
                         <div class="card-body bg-gradient-servis position-relative">
                             <span class="badge bg-dark bg-opacity-10 text-dark position-absolute top-0 end-0 mt-2 me-2">Müşteri</span>
-                            <div class="d-flex justify-content-between align-items-center gap-2">
+                            <div class="ozet-rozet-govde">
                                 <div class="min-w-0 flex-grow-1">
                                     <div class="ozet-rozet-ust text-dark" id="kutuServis">0</div>
                                     <div class="ozet-rozet-alt text-dark" style="opacity: 0.75;">Adet</div>
                                 </div>
                                 <div class="text-dark opacity-90 flex-shrink-0 align-self-center"><i class="fa-solid fa-users fa-3x"></i></div>
                             </div>
+                            <div class="ozet-rozet-notlar"><strong class="ozet-rozet-para" id="kutuNotAlacak">0,00 ₺</strong></div>
                         </div>
                     </div>
-                    <div class="card ozet-kart ozet-rozet-kutu ozet-kart-ucuncu ozet-rozet-tikla border-0 shadow-sm overflow-hidden"
+                    <div class="card ozet-kart ozet-rozet-kutu ozet-rozet-tikla border-0 shadow-sm overflow-hidden"
                          role="button" tabindex="0"
                          onclick="menuyuGoster('stok')" onkeydown="if(event.key==='Enter'||event.key===' ')menuyuGoster('stok')"
                          title="Stok listesini aç">
                         <div class="card-body bg-gradient-stok position-relative">
                             <span class="badge bg-white bg-opacity-25 text-white position-absolute top-0 end-0 mt-2 me-2">Stok</span>
-                            <div class="d-flex justify-content-between align-items-center gap-2">
+                            <div class="ozet-rozet-govde">
                                 <div class="min-w-0 flex-grow-1">
                                     <div class="ozet-rozet-ust text-white" id="kutuStok">0</div>
                                     <div class="ozet-rozet-alt text-white" style="opacity: 0.85;">Ürün</div>
                                 </div>
                                 <div class="text-white opacity-90 flex-shrink-0 align-self-center"><i class="fa-solid fa-boxes-stacked fa-3x"></i></div>
                             </div>
+                            <div class="ozet-rozet-notlar"><strong class="ozet-rozet-para" id="kutuNotStok">0,00 ₺</strong></div>
                         </div>
+                    </div>
+                    <div class="card ozet-kart ozet-rozet-kutu ozet-rozet-tikla border-0 shadow-sm overflow-hidden"
+                         role="button" tabindex="0"
+                         onclick="menuyuGoster('tedarikci')" onkeydown="if(event.key==='Enter'||event.key===' ')menuyuGoster('tedarikci')"
+                         title="Tedarikçi listesini aç">
+                        <div class="card-body bg-gradient-primary position-relative">
+                            <span class="badge bg-white bg-opacity-25 text-white position-absolute top-0 end-0 mt-2 me-2">Tedarikçiler</span>
+                            <div class="ozet-rozet-govde">
+                                <div class="min-w-0 flex-grow-1">
+                                    <div class="ozet-rozet-ust text-white" id="kutuTedarikci">0</div>
+                                    <div class="ozet-rozet-alt text-white" style="opacity: 0.85;">Adet</div>
+                                </div>
+                                <div class="text-white opacity-90 flex-shrink-0 align-self-center"><i class="fa-solid fa-truck-field fa-3x"></i></div>
+                            </div>
+                            <div class="ozet-rozet-notlar"><strong class="ozet-rozet-para" id="kutuNotTedarikci">0,00 ₺</strong></div>
+                        </div>
+                    </div>
+                        </div>
+                        <button type="button" class="ozet-rakam-toggle" id="ozetRakamToggle"
+                                onclick="ozetRakamlariToggle(event)" title="Parasal değerleri göster / gizle" aria-label="Parasal değerleri göster veya gizle">
+                            <i class="fa-solid fa-eye" id="ozetRakamToggleIkon"></i>
+                        </button>
+                    </div>
+                    <div class="ozet-encok-kart shadow-sm p-3" style="grid-column: 1 / -1;">
+                        <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+                            <p class="ozet-encok-baslik mb-0"><i class="fa-solid fa-fire text-danger me-1"></i>Son 30 gün — en çok satılan</p>
+                            <button type="button" class="btn btn-sm btn-outline-success py-0 px-2" onclick="enCokSatanModalAc()">Tümü</button>
+                        </div>
+                        <ul class="ozet-encok-liste" id="ozetEnCokSatanListe">
+                            <li class="text-muted small">Yükleniyor…</li>
+                        </ul>
                     </div>
                 </div>
             </div>
@@ -1569,6 +1991,9 @@
                                 </select>
                             </div>
                             <div class="d-flex flex-wrap gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-danger shadow-sm text-nowrap" onclick="enCokSatanModalAc()">
+                                    <i class="fa-solid fa-fire me-1"></i>En çok satılanlar
+                                </button>
                                 <button type="button" class="btn btn-sm btn-outline-primary shadow-sm text-nowrap" onclick="stokBarkodEtiketYazdir()">
                                     <i class="fa-solid fa-barcode me-1"></i>Barkod Etiketi Yazdır
                                 </button>
@@ -1599,6 +2024,54 @@
                         </div>
                     </div>
                     <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="enCokSatanModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+                <div class="modal-content border-0 shadow">
+                    <div class="modal-header border-0 pb-1">
+                        <h5 class="modal-title fw-bold mb-0"><i class="fa-solid fa-fire text-danger me-2"></i>En çok satılan ürünler</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                    </div>
+                    <div class="modal-body pt-2">
+                        <div class="d-flex flex-wrap align-items-end gap-2 mb-3">
+                            <div>
+                                <label class="form-label small text-secondary mb-0" for="ecsBaslangic">Başlangıç</label>
+                                <input type="date" class="form-control form-control-sm" id="ecsBaslangic">
+                            </div>
+                            <div>
+                                <label class="form-label small text-secondary mb-0" for="ecsBitis">Bitiş</label>
+                                <input type="date" class="form-control form-control-sm" id="ecsBitis">
+                            </div>
+                            <button type="button" class="btn btn-sm btn-success fw-semibold px-3" onclick="enCokSatanListele()">
+                                <i class="fa-solid fa-filter me-1"></i>Listele
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="enCokSatanTarihVarsayilanVeYukle()">
+                                Son 30 gün
+                            </button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="text-muted" style="width:2.5rem">#</th>
+                                        <th class="text-muted">Ürün</th>
+                                        <th class="text-muted text-center">Kalan</th>
+                                        <th class="text-muted text-end">Satılan</th>
+                                        <th class="text-muted text-end">Tutar</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="enCokSatanTablosu">
+                                    <tr><td colspan="5" class="text-center text-muted py-4">Yükleniyor…</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 pt-0">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
                     </div>
                 </div>
@@ -2393,33 +2866,39 @@
             </div>
         </div>
 
-        <div id="servis-bolumu" class="bolum" style="display: none;">
-            <div class="container mt-0">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h3 class="text-secondary"><i class="fa-solid fa-screwdriver-wrench"></i> Servis ve Arıza İşleri</h3>
-                <button class="btn btn-warning shadow-sm" data-bs-toggle="modal" data-bs-target="#servisEkleModal">
-                    <i class="fa-solid fa-clipboard-list"></i> Yeni Servis Aç
-                </button>
-            </div>
-            <div class="card shadow-sm border-0">
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover table-striped mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Kayıt No</th>
-                                    <th>Müşteri</th>
-                                    <th>Arıza / Yapılan İş</th>
-                                    <th>Durum</th>
-                                    <th>Toplam (₺)</th>
-                                    <th class="text-end">İşlemler</th>
-                                </tr>
-                            </thead>
-                            <tbody id="servisTabloGovdesi"></tbody>
-                        </table>
+        <div class="modal fade" id="servisListeModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                <div class="modal-content border-0 shadow">
+                    <div class="modal-header bg-warning text-dark">
+                        <h5 class="modal-title fw-bold"><i class="fa-solid fa-screwdriver-wrench"></i> Servis ve Arıza İşleri</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="d-flex justify-content-end mb-3">
+                            <button type="button" class="btn btn-warning shadow-sm" data-bs-toggle="modal" data-bs-target="#servisEkleModal">
+                                <i class="fa-solid fa-clipboard-list"></i> Yeni Servis Aç
+                            </button>
+                        </div>
+                        <div class="table-responsive border rounded">
+                            <table class="table table-hover table-striped mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Kayıt No</th>
+                                        <th>Müşteri</th>
+                                        <th>Arıza / Yapılan İş</th>
+                                        <th>Durum</th>
+                                        <th>Toplam (₺)</th>
+                                        <th class="text-end">İşlemler</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="servisTabloGovdesi"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Kapat</button>
                     </div>
                 </div>
-            </div>
             </div>
         </div>
 
@@ -3192,120 +3671,121 @@
         <div class="modal fade" id="gunlukIslemModal" tabindex="-1" aria-labelledby="gunlukIslemModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered modal-xl">
                 <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
-                    <div class="modal-header text-white border-0 py-3 px-4" style="background: linear-gradient(120deg, #166534 0%, #15803d 50%, #0f766e 100%);">
+                    <div class="gunluk-modal-ust d-flex align-items-start justify-content-between gap-3">
                         <div>
-                            <h5 class="modal-title fw-bold mb-0" id="gunlukIslemModalLabel"><i class="fa-solid fa-calendar-day me-2"></i>Günlük işlemler</h5>
-                            <small class="text-white-50">Seçilen tarihteki satış, tahsilat ve gider kayıtları</small>
+                            <h5 class="modal-title mb-0" id="gunlukIslemModalLabel"><i class="fa-solid fa-calendar-day me-2 text-success"></i>Günlük işlemler</h5>
+                            <div class="gunluk-modal-altbaslik mt-1">Tarih aralığına göre kasa, ciro ve işlem dökümü</div>
                         </div>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                        <button type="button" class="btn-close mt-1" data-bs-dismiss="modal" aria-label="Kapat"></button>
                     </div>
-                    <div class="modal-body bg-light p-3 p-md-3">
-                        <div class="row g-2 align-items-end flex-shrink-0">
-                            <div class="col-sm-auto">
+                    <div class="modal-body">
+                        <div class="gunluk-filtre-satir">
+                            <div>
                                 <label class="form-label small text-secondary mb-0">Başlangıç</label>
-                                <input type="date" class="form-control" id="gunlukBaslangic">
+                                <input type="date" class="form-control form-control-sm" id="gunlukBaslangic">
                             </div>
-                            <div class="col-sm-auto">
+                            <div>
                                 <label class="form-label small text-secondary mb-0">Bitiş</label>
-                                <input type="date" class="form-control" id="gunlukBitis">
+                                <input type="date" class="form-control form-control-sm" id="gunlukBitis">
                             </div>
-                            <div class="col-sm-auto">
-                                <button type="button" class="btn btn-success fw-semibold px-4" onclick="gunlukIslemleriYukle()">
-                                    <i class="fa-solid fa-filter me-1"></i>Listele
-                                </button>
-                            </div>
-                            <div class="col text-sm-end small text-secondary pt-2 pt-sm-0">
-                                Kasa girişi (nakit+kart+havale): <strong class="text-dark" id="gunlukKasaGirisOzet">0.00 ₺</strong>
-                                <span class="mx-1">·</span>
-                                Cari alacak (toplam): <strong class="text-dark" id="gunlukCariAlacak">0.00 ₺</strong>
+                            <button type="button" class="btn btn-sm btn-success fw-semibold px-3" onclick="gunlukIslemleriYukle()">
+                                <i class="fa-solid fa-filter me-1"></i>Listele
+                            </button>
+                            <div class="ms-sm-auto small text-secondary">
+                                Kasa girişi: <strong class="text-dark" id="gunlukKasaGirisOzet">0.00 ₺</strong>
+                                <span class="mx-1 text-muted">·</span>
+                                Cari alacak: <strong class="text-dark" id="gunlukCariAlacak">0.00 ₺</strong>
                             </div>
                         </div>
-                        <div class="gunluk-islem-govde">
-                            <aside class="gunluk-ozet-yan" aria-label="Günlük özet">
-                                <div class="gunluk-ozet-sutun">
-                                    <div class="gunluk-ozet-baslik">Satış</div>
-                                    <div class="bg-white border gunluk-ozet-kutu">
-                                        <div class="text-muted small">Nakit</div>
-                                        <div class="fw-bold text-success" id="ozNakit">0.00 ₺</div>
+
+                        <div class="gunluk-ozet-ust" aria-label="Günlük özet">
+                            <section class="gunluk-ozet-grup gunluk-ozet-grup-gelir">
+                                <div class="gunluk-ozet-grup-baslik"><i class="fa-solid fa-arrow-trend-up"></i> Gelir / satış</div>
+                                <div class="gunluk-ozet-rozetler">
+                                    <div class="gunluk-ozet-kutu">
+                                        <div class="gunluk-ozet-etiket">Nakit</div>
+                                        <div class="gunluk-ozet-deger text-success" id="ozNakit">0.00 ₺</div>
                                     </div>
-                                    <div class="bg-white border gunluk-ozet-kutu">
-                                        <div class="text-muted small">Kart / POS</div>
-                                        <div class="fw-bold text-primary" id="ozKart">0.00 ₺</div>
+                                    <div class="gunluk-ozet-kutu">
+                                        <div class="gunluk-ozet-etiket">Kart / POS</div>
+                                        <div class="gunluk-ozet-deger text-primary" id="ozKart">0.00 ₺</div>
                                     </div>
-                                    <div class="bg-white border gunluk-ozet-kutu">
-                                        <div class="text-muted small">Havale / EFT</div>
-                                        <div class="fw-bold text-warning text-dark" id="ozHavale">0.00 ₺</div>
+                                    <div class="gunluk-ozet-kutu">
+                                        <div class="gunluk-ozet-etiket">Havale / EFT</div>
+                                        <div class="gunluk-ozet-deger" id="ozHavale">0.00 ₺</div>
                                     </div>
-                                    <div class="bg-white border gunluk-ozet-kutu">
-                                        <div class="text-muted small">Veresiye</div>
-                                        <div class="fw-bold text-danger" id="ozVeresiye">0.00 ₺</div>
+                                    <div class="gunluk-ozet-kutu">
+                                        <div class="gunluk-ozet-etiket">Veresiye</div>
+                                        <div class="gunluk-ozet-deger text-danger" id="ozVeresiye">0.00 ₺</div>
                                     </div>
-                                    <div class="bg-white border gunluk-ozet-kutu border-primary border-2">
-                                        <div class="text-muted small">Satış ciro</div>
-                                        <div class="fw-bold text-primary" id="ozToplamVeresiyesiz">0.00 ₺</div>
-                                        <div class="text-muted" style="font-size:0.7rem;line-height:1.2">veresiyesiz</div>
-                                        <div class="fw-bold text-primary mt-1" id="ozToplam">0.00 ₺</div>
-                                        <div class="text-muted" style="font-size:0.7rem;line-height:1.2">veresiyeli</div>
-                                    </div>
-                                </div>
-                                <div class="gunluk-ozet-sutun">
-                                    <div class="gunluk-ozet-baslik">Gider</div>
-                                    <div class="bg-white border gunluk-ozet-kutu border-danger border-opacity-25">
-                                        <div class="text-muted small">Nakit çıkış</div>
-                                        <div class="fw-bold text-danger" id="ozGiderNakit">0.00 ₺</div>
-                                    </div>
-                                    <div class="bg-white border gunluk-ozet-kutu border-danger border-opacity-25">
-                                        <div class="text-muted small">Kart çıkış</div>
-                                        <div class="fw-bold text-danger" id="ozGiderKart">0.00 ₺</div>
-                                    </div>
-                                    <div class="bg-white border gunluk-ozet-kutu border-danger border-opacity-25">
-                                        <div class="text-muted small">Havale çıkış</div>
-                                        <div class="fw-bold text-danger" id="ozGiderHavale">0.00 ₺</div>
-                                    </div>
-                                    <div class="bg-white border gunluk-ozet-kutu border-secondary border-opacity-50">
-                                        <div class="text-muted small">Mal alım veresiye</div>
-                                        <div class="fw-bold text-secondary" id="ozMalAlimVeresiye">0.00 ₺</div>
-                                    </div>
-                                    <div class="bg-white border gunluk-ozet-kutu border-danger border-2">
-                                        <div class="text-muted small">Kasa çıkışı</div>
-                                        <div class="fw-bold text-danger" id="ozGiderKasaToplam">0.00 ₺</div>
-                                    </div>
-                                    <div class="gunluk-ozet-alt">
-                                        Tedarikçi: <strong class="text-dark" id="ozGiderTedarikciKasa">0.00 ₺</strong><br>
-                                        Genel: <strong class="text-dark" id="ozGiderGenelKasa">0.00 ₺</strong>
+                                    <div class="gunluk-ozet-kutu ozet-vurgulu gunluk-ozet-tikla" role="button" tabindex="0" title="Detay" onclick="gunlukOzetDetayAc('ciro')" onkeydown="if(event.key==='Enter'||event.key===' ')gunlukOzetDetayAc('ciro')">
+                                        <div class="gunluk-ozet-etiket">Ciro</div>
+                                        <div class="gunluk-ozet-deger text-success" id="ozToplamVeresiyesiz">0.00 ₺</div>
+                                        <span id="ozToplam" class="d-none">0.00 ₺</span>
                                     </div>
                                 </div>
-                            </aside>
-                            <div class="gunluk-liste-yan">
-                                <div class="table-responsive rounded-3 border bg-white gunluk-islem-tablo-wrap">
-                                    <table class="table table-sm table-hover align-middle mb-0" id="gunlukIslemTablo">
-                                        <colgroup>
-                                            <col style="width:6.25rem">
-                                            <col style="width:calc(11% + 3cm)">
-                                            <col style="width:11.5%">
-                                            <col>
-                                            <col style="width:2.2rem">
-                                            <col style="width:4.5rem">
-                                            <col style="width:5.35rem">
-                                            <col style="width:4.75rem">
-                                        </colgroup>
-                                        <thead class="table-light sticky-top">
-                                            <tr class="small text-secondary">
-                                                <th>Tarih / saat</th>
-                                                <th>Açıklama</th>
-                                                <th class="text-center">Tür</th>
-                                                <th>Ürün / hizmet</th>
-                                                <th class="text-center">Adet</th>
-                                                <th class="text-end">Birim</th>
-                                                <th class="text-end">Tutar</th>
-                                                <th class="text-end">İşlem</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="gunlukIslemTablosu">
-                                            <tr><td colspan="8" class="text-center text-muted py-4">Yükleniyor…</td></tr>
-                                        </tbody>
-                                    </table>
+                            </section>
+                            <section class="gunluk-ozet-grup gunluk-ozet-grup-gider">
+                                <div class="gunluk-ozet-grup-baslik"><i class="fa-solid fa-arrow-trend-down"></i> Gider / çıkış</div>
+                                <div class="gunluk-ozet-rozetler">
+                                    <div class="gunluk-ozet-kutu">
+                                        <div class="gunluk-ozet-etiket">Nakit çıkış</div>
+                                        <div class="gunluk-ozet-deger text-danger" id="ozGiderNakit">0.00 ₺</div>
+                                    </div>
+                                    <div class="gunluk-ozet-kutu">
+                                        <div class="gunluk-ozet-etiket">Kart çıkış</div>
+                                        <div class="gunluk-ozet-deger text-danger" id="ozGiderKart">0.00 ₺</div>
+                                    </div>
+                                    <div class="gunluk-ozet-kutu">
+                                        <div class="gunluk-ozet-etiket">Havale çıkış</div>
+                                        <div class="gunluk-ozet-deger text-danger" id="ozGiderHavale">0.00 ₺</div>
+                                    </div>
+                                    <div class="gunluk-ozet-kutu">
+                                        <div class="gunluk-ozet-etiket">Mal alım veresiye</div>
+                                        <div class="gunluk-ozet-deger text-secondary" id="ozMalAlimVeresiye">0.00 ₺</div>
+                                    </div>
+                                    <div class="gunluk-ozet-kutu ozet-vurgulu gunluk-ozet-tikla" role="button" tabindex="0" title="Detay" onclick="gunlukOzetDetayAc('gider')" onkeydown="if(event.key==='Enter'||event.key===' ')gunlukOzetDetayAc('gider')">
+                                        <div class="gunluk-ozet-etiket">Kasa çıkışı</div>
+                                        <div class="gunluk-ozet-deger text-danger" id="ozGiderKasaToplam">0.00 ₺</div>
+                                        <span id="ozGiderTedarikciKasa" class="d-none">0.00 ₺</span>
+                                        <span id="ozGiderGenelKasa" class="d-none">0.00 ₺</span>
+                                    </div>
                                 </div>
+                            </section>
+                        </div>
+
+                        <div class="gunluk-liste-yan">
+                            <div class="gunluk-liste-baslik">
+                                <h6 class="mb-0"><i class="fa-solid fa-list-ul me-2"></i>İşlem listesi</h6>
+                            </div>
+                            <div class="table-responsive gunluk-islem-tablo-wrap">
+                                <table class="table table-sm table-hover align-middle mb-0" id="gunlukIslemTablo">
+                                    <colgroup>
+                                        <col style="width:6.25rem">
+                                        <col style="width:calc(11% + 3cm)">
+                                        <col style="width:11.5%">
+                                        <col>
+                                        <col style="width:2.2rem">
+                                        <col style="width:4.5rem">
+                                        <col style="width:5.35rem">
+                                        <col style="width:4.75rem">
+                                    </colgroup>
+                                    <thead class="table-light sticky-top">
+                                        <tr class="small text-secondary">
+                                            <th>Tarih / saat</th>
+                                            <th>Açıklama</th>
+                                            <th class="text-center">Tür</th>
+                                            <th>Ürün / hizmet</th>
+                                            <th class="text-center">Adet</th>
+                                            <th class="text-end">Birim</th>
+                                            <th class="text-end">Tutar</th>
+                                            <th class="text-end">İşlem</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="gunlukIslemTablosu">
+                                        <tr><td colspan="8" class="text-center text-muted py-4">Yükleniyor…</td></tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
@@ -3318,6 +3798,62 @@
 
     </div>
 
+        </div>
+
+        <div class="modal fade" id="gunlukOzetDetayModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content border-0 shadow">
+                    <div class="modal-header border-0 pb-1">
+                        <h5 class="modal-title fw-bold mb-0">Günlük özet detayı</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                    </div>
+                    <div class="modal-body pt-2">
+                        <div class="d-flex flex-wrap align-items-end gap-2 mb-3">
+                            <div>
+                                <label class="form-label small text-secondary mb-0" for="godBaslangic">Başlangıç</label>
+                                <input type="date" class="form-control form-control-sm" id="godBaslangic">
+                            </div>
+                            <div>
+                                <label class="form-label small text-secondary mb-0" for="godBitis">Bitiş</label>
+                                <input type="date" class="form-control form-control-sm" id="godBitis">
+                            </div>
+                            <button type="button" class="btn btn-sm btn-success fw-semibold px-3" onclick="gunlukOzetDetayListele()">
+                                <i class="fa-solid fa-filter me-1"></i>Listele
+                            </button>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="gunluk-detay-blok gelir">
+                                    <div class="gunluk-detay-baslik"><i class="fa-solid fa-arrow-trend-up me-1"></i>Gelir / satış</div>
+                                    <div class="gunluk-detay-satir"><span>Nakit</span><strong class="text-success" id="godNakit">0.00 ₺</strong></div>
+                                    <div class="gunluk-detay-satir"><span>Kart / POS</span><strong class="text-primary" id="godKart">0.00 ₺</strong></div>
+                                    <div class="gunluk-detay-satir"><span>Havale / EFT</span><strong id="godHavale">0.00 ₺</strong></div>
+                                    <div class="gunluk-detay-satir"><span>Veresiye</span><strong class="text-danger" id="godVeresiye">0.00 ₺</strong></div>
+                                    <div class="gunluk-detay-satir toplam"><span>Ciro (veresiyesiz)</span><strong class="text-success" id="godCiro">0.00 ₺</strong></div>
+                                    <div class="gunluk-detay-satir"><span>Ciro (veresiyeli)</span><strong id="godCiroVeresiyeli">0.00 ₺</strong></div>
+                                    <div class="gunluk-detay-satir"><span>Kasa girişi</span><strong class="text-success" id="godKasaGiris">0.00 ₺</strong></div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="gunluk-detay-blok gider">
+                                    <div class="gunluk-detay-baslik"><i class="fa-solid fa-arrow-trend-down me-1"></i>Gider / çıkış</div>
+                                    <div class="gunluk-detay-satir"><span>Nakit çıkış</span><strong class="text-danger" id="godGiderNakit">0.00 ₺</strong></div>
+                                    <div class="gunluk-detay-satir"><span>Kart çıkış</span><strong class="text-danger" id="godGiderKart">0.00 ₺</strong></div>
+                                    <div class="gunluk-detay-satir"><span>Havale çıkış</span><strong class="text-danger" id="godGiderHavale">0.00 ₺</strong></div>
+                                    <div class="gunluk-detay-satir"><span>Mal alım veresiye</span><strong class="text-secondary" id="godMalAlimVeresiye">0.00 ₺</strong></div>
+                                    <div class="gunluk-detay-satir"><span>Tedarikçi (kasa)</span><strong id="godTedarikciKasa">0.00 ₺</strong></div>
+                                    <div class="gunluk-detay-satir"><span>Genel gider (kasa)</span><strong id="godGenelKasa">0.00 ₺</strong></div>
+                                    <div class="gunluk-detay-satir toplam"><span>Toplam kasa çıkışı</span><strong class="text-danger" id="godGiderKasa">0.00 ₺</strong></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 pt-0">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <div class="modal fade" id="gunlukIslemDetayModal" tabindex="-1" aria-hidden="true" data-tarayici-kilit-kapali="1">
             <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -4051,8 +4587,8 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="js/utils.js?v=1.0.82"></script>
-    <script src="js/navigation.js?v=1.0.82"></script>
-    <script src="app.js?v=1.0.82"></script>
+    <script src="js/utils.js?v=1.0.83"></script>
+    <script src="js/navigation.js?v=1.0.83"></script>
+    <script src="app.js?v=1.0.83"></script>
 </body>
 </html>

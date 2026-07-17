@@ -17,6 +17,10 @@ function menuyuGoster(bolumAdi) {
     modalAc(document.getElementById('giderListeModal'), () => genelGiderListele());
     return;
   }
+  if (bolumAdi === 'servis') {
+    modalAc(document.getElementById('servisListeModal'), () => servisleriGetir());
+    return;
+  }
   document.querySelectorAll('.bolum').forEach((el) => {
     el.style.display = 'none';
   });
