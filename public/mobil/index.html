@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="mobil.css?v=44">
+  <link rel="stylesheet" href="mobil.css?v=49">
 </head>
 <body>
   <div id="view-login" class="view view-active">
@@ -367,21 +367,15 @@
         <div class="stok-mbl-bolum-baslik">Ürün bilgisi</div>
         <label class="field-label" for="stokUrunAdi">Ürün adı</label>
         <input id="stokUrunAdi" class="field-input" type="text" required autocomplete="off">
-        <div class="form-grid-2">
-          <div>
-            <label class="field-label" for="stokKategori">Kategori</label>
-            <input id="stokKategori" class="field-input" type="text" list="stokKategoriListe" autocomplete="off" placeholder="Seçin veya yazın">
-          </div>
-          <div>
-            <label class="field-label" for="stokBarkod">Barkod</label>
-            <div class="stok-barkod-satir">
-              <input id="stokBarkod" class="field-input" type="text" inputmode="numeric" autocomplete="off" placeholder="Okutulan veya elle">
-              <button type="button" id="btnStokBarkodTara" class="btn btn-scan btn-scan-inline" title="Barkod okut" aria-label="Barkod okut">
-                <span class="btn-scan-ikon" aria-hidden="true">📷</span>
-                <span class="btn-scan-metin">Okut</span>
-              </button>
-            </div>
-          </div>
+        <label class="field-label" for="stokKategori">Kategori</label>
+        <input id="stokKategori" class="field-input" type="text" list="stokKategoriListe" autocomplete="off" placeholder="Seçin veya yazın">
+        <label class="field-label" for="stokBarkod">Barkod</label>
+        <div class="stok-barkod-satir">
+          <input id="stokBarkod" class="field-input" type="text" inputmode="numeric" autocomplete="off" placeholder="Barkod okutun veya yazın">
+          <button type="button" id="btnStokBarkodTara" class="btn btn-scan btn-scan-inline" title="Barkod okut" aria-label="Barkod okut">
+            <span class="btn-scan-ikon" aria-hidden="true">📷</span>
+            <span class="btn-scan-metin">Okut</span>
+          </button>
         </div>
       </section>
 
@@ -589,6 +583,6 @@
 
   <script src="vendor/html5-qrcode.min.js"></script>
   <script src="vendor/html2canvas.min.js"></script>
-  <script src="app.js?v=59"></script>
+  <script src="app.js?v=62"></script>
 </body>
 </html>

@@ -301,8 +301,43 @@ body { overflow: hidden; }
   font-size: 0.78rem;
 }
 #dlgStok.dlg-tam-sayfa .field-input {
-  padding: 9px 10px;
-  min-height: 40px;
+  padding: 8px 10px;
+  min-height: 38px;
+  width: 100%;
+}
+#dlgStok.dlg-tam-sayfa .stok-barkod-satir {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  width: 100%;
+}
+#dlgStok.dlg-tam-sayfa .stok-barkod-satir .field-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+}
+#dlgStok.dlg-tam-sayfa .btn-scan-inline {
+  flex: 0 0 auto;
+  min-width: 78px;
+  height: 38px;
+  padding: 0 12px;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+#dlgStok.dlg-tam-sayfa .btn-scan-inline .btn-scan-ikon {
+  font-size: 1.05rem;
+}
+#dlgStok.dlg-tam-sayfa .btn-scan-inline .btn-scan-metin {
+  font-size: 0.72rem;
+}
+#dlgStok.dlg-tam-sayfa .stok-mbl-bolum > .field-label {
+  margin-top: 8px;
+}
+#dlgStok.dlg-tam-sayfa .stok-mbl-bolum > .stok-mbl-bolum-baslik + .field-label {
+  margin-top: 0;
 }
 #dlgStok.dlg-tam-sayfa .stok-fiyat-aciklama,
 #dlgStok.dlg-tam-sayfa .stok-mbl-uyari-metin {
@@ -390,16 +425,22 @@ body { overflow: hidden; }
 .btn-scan:disabled { opacity: 0.45; }
 .stok-barkod-satir {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   align-items: stretch;
+  width: 100%;
 }
 .stok-barkod-satir .field-input {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
 }
 .btn-scan-inline {
-  min-width: 48px;
-  padding: 6px 8px;
+  flex: 0 0 auto;
+  min-width: 72px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
 }
 .satis-barkod-ipucu {
   font-size: 0.75rem;
@@ -719,13 +760,6 @@ body { overflow: hidden; }
   margin-bottom: 8px;
 }
 .sepet-liste { list-style: none; margin: 0; padding: 0; }
-.sepet-satir-ust {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  grid-column: 1 / -1;
-}
 .sepet-satir-alt {
   display: flex;
   flex-wrap: wrap;
@@ -759,49 +793,51 @@ body { overflow: hidden; }
   font-size: 1rem;
 }
 .sepet-satir {
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
   gap: 8px;
-  align-items: center;
-  padding: 12px 0;
+  padding: 8px 0;
   border-bottom: 1px solid var(--border);
 }
 .sepet-satir:last-child { border-bottom: none; }
 .sepet-ad {
-  font-size: 0.95rem;
+  font-size: 0.88rem;
   font-weight: 600;
   line-height: 1.3;
-  grid-column: 1 / -1;
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: normal;
+  word-break: break-word;
+  padding-top: 6px;
 }
 .sepet-satir-kontroller {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 10px;
-  width: 100%;
+  gap: 5px;
+  flex: 0 0 auto;
+  max-width: 100%;
 }
 .sepet-fiyat-wrap {
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex: 1 1 140px;
-  min-width: 140px;
-  max-width: 200px;
+  gap: 3px;
+  flex: 0 0 auto;
 }
 .sepet-fiyat-label {
-  font-size: 0.9rem;
+  font-size: 0.75rem;
   font-weight: 700;
   color: var(--muted);
   flex-shrink: 0;
 }
 .sepet-fiyat-input {
-  width: 100%;
-  min-width: 0;
-  height: 44px;
-  padding: 8px 12px;
+  width: 88px;
+  height: 32px;
+  padding: 3px 8px;
   border: 1px solid var(--border);
-  border-radius: 10px;
-  font-size: 1.05rem;
+  border-radius: 8px;
+  font-size: 0.86rem;
   font-weight: 700;
   text-align: right;
   background: var(--bg);
@@ -809,38 +845,44 @@ body { overflow: hidden; }
 .sepet-miktar-wrap {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 3px;
   flex: 0 0 auto;
 }
 .sepet-miktar-btn {
-  width: 40px;
-  height: 40px;
+  width: 30px;
+  height: 30px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--bg);
-  font-size: 1.2rem;
+  font-size: 0.95rem;
+  line-height: 1;
   cursor: pointer;
+  padding: 0;
 }
 .sepet-miktar {
-  min-width: 32px;
+  min-width: 18px;
   text-align: center;
   font-weight: 700;
-  font-size: 1.05rem;
+  font-size: 0.88rem;
 }
 .sepet-satir-tutar {
   font-weight: 700;
   color: var(--primary);
-  font-size: 1.05rem;
-  margin-left: auto;
+  font-size: 0.86rem;
   white-space: nowrap;
+  flex: 0 0 auto;
+  min-width: 4.2rem;
+  text-align: right;
 }
 .sepet-sil {
   border: none;
   background: none;
   color: var(--danger);
-  font-size: 1.2rem;
-  padding: 4px;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 2px;
   cursor: pointer;
+  flex-shrink: 0;
 }
 .sepet-alt {
   display: flex;
