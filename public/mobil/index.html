@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="mobil.css?v=43">
+  <link rel="stylesheet" href="mobil.css?v=44">
 </head>
 <body>
   <div id="view-login" class="view view-active">
@@ -356,9 +356,12 @@
     </form>
   </dialog>
 
-  <dialog id="dlgStok" class="mobil-dialog mobil-dialog-scroll">
-    <form id="formStok" method="dialog" class="dialog-body">
-      <h2 class="dialog-title" id="dlgStokBaslik">Yeni ürün</h2>
+  <dialog id="dlgStok" class="mobil-dialog mobil-dialog-scroll dlg-tam-sayfa">
+    <form id="formStok" method="dialog" class="dialog-body dialog-body-stok">
+      <div class="dialog-baslik-satir">
+        <h2 class="dialog-title mb-0" id="dlgStokBaslik">Yeni ürün</h2>
+        <button type="button" class="btn-text" data-dialog-close aria-label="Kapat">Kapat</button>
+      </div>
 
       <section class="stok-mbl-bolum">
         <div class="stok-mbl-bolum-baslik">Ürün bilgisi</div>
@@ -586,6 +589,6 @@
 
   <script src="vendor/html5-qrcode.min.js"></script>
   <script src="vendor/html2canvas.min.js"></script>
-  <script src="app.js?v=57"></script>
+  <script src="app.js?v=59"></script>
 </body>
 </html>

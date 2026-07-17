@@ -2333,6 +2333,8 @@
           || (tel ? musteriCache.find((m) => String(m.Telefon || '') === tel) : null);
       }
       $('dlgMusteriEkle').close();
+      musteriListele();
+      navKartOzetGuncelle();
       if (musteriEkleKaynak === 'satis') {
         if (yeni) {
           satisMusteriSec(yeni);
@@ -2342,10 +2344,14 @@
           satisMusteriAraGoster(ad);
         }
       } else {
-        musteriListele();
-        navKartOzetGuncelle();
         toast('Müşteri eklendi');
-        if (yeni) musteriDetayAc(yeni.MusteriID);
+        const yeniId = Number(payload.musteriID || yeni?.MusteriID);
+        if (Number.isInteger(yeniId) && yeniId > 0) {
+          musteriDetayDonusPanel = 'musteri';
+          await musteriDetayAc(yeniId);
+        } else {
+          panelGoster('musteri');
+        }
       }
     } catch (e) {
       console.error(e);

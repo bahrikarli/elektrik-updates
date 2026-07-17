@@ -239,6 +239,7 @@ body { overflow: hidden; }
   margin-bottom: 12px;
 }
 .dialog-baslik-satir .dialog-title { margin: 0; }
+.dlg-tam-sayfa,
 .dlg-yeni-satis {
   width: calc(100% - 16px);
   max-width: calc(100% - 16px);
@@ -249,6 +250,7 @@ body { overflow: hidden; }
   overflow: hidden;
   box-sizing: border-box;
 }
+.dlg-tam-sayfa .dialog-body,
 .dlg-yeni-satis .dialog-body-satis {
   height: 100%;
   max-height: none;
@@ -257,7 +259,16 @@ body { overflow: hidden; }
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  padding: 16px 16px calc(16px + var(--safe-b, 0px));
+  padding: 14px 14px calc(14px + var(--safe-b, 0px));
+}
+.dlg-tam-sayfa .dialog-actions {
+  margin-top: auto;
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: linear-gradient(180deg, rgba(255,255,255,0.92) 0%, #fff 35%);
+  padding-top: 12px;
+  padding-bottom: 2px;
 }
 .dlg-yeni-satis .sepet-wrap {
   margin-top: 4px;
@@ -274,6 +285,44 @@ body { overflow: hidden; }
 }
 .dlg-yeni-satis .arama-sonuc-list {
   max-height: 180px;
+}
+
+/* Stok ekle/düzenle — sıkı yerleşim */
+#dlgStok.dlg-tam-sayfa .stok-mbl-bolum {
+  margin-bottom: 10px;
+  padding: 10px 10px 8px;
+}
+#dlgStok.dlg-tam-sayfa .stok-mbl-bolum-baslik {
+  margin-bottom: 6px;
+  font-size: 0.72rem;
+}
+#dlgStok.dlg-tam-sayfa .field-label {
+  margin-bottom: 3px;
+  font-size: 0.78rem;
+}
+#dlgStok.dlg-tam-sayfa .field-input {
+  padding: 9px 10px;
+  min-height: 40px;
+}
+#dlgStok.dlg-tam-sayfa .stok-fiyat-aciklama,
+#dlgStok.dlg-tam-sayfa .stok-mbl-uyari-metin {
+  display: none;
+}
+#dlgStok.dlg-tam-sayfa .stok-mbl-bolum .field-hint {
+  margin-top: 2px;
+  margin-bottom: 0;
+  font-size: 0.7rem;
+}
+#dlgStok.dlg-tam-sayfa .stok-fiyat-kutu {
+  padding: 8px;
+}
+#dlgStok.dlg-tam-sayfa .stok-mbl-bolum .form-grid-2 {
+  gap: 8px;
+  margin-bottom: 0;
+}
+#dlgStok.dlg-tam-sayfa .dialog-baslik-satir {
+  margin-bottom: 10px;
+  flex-shrink: 0;
 }
 .panel {
   position: absolute;
@@ -938,6 +987,11 @@ body { overflow: hidden; }
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
+.dlg-tam-sayfa.mobil-dialog-scroll .dialog-body,
+.dlg-yeni-satis.mobil-dialog-scroll .dialog-body-satis {
+  max-height: none;
+  height: 100%;
+}
 
 .hareket-aksiyon {
   display: flex;
@@ -1592,6 +1646,15 @@ body { overflow: hidden; }
   border-radius: 16px;
   max-height: min(90vh, 640px);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+}
+.mobil-dialog.dlg-tam-sayfa,
+.mobil-dialog.dlg-yeni-satis {
+  width: calc(100% - 16px);
+  max-width: calc(100% - 16px);
+  height: calc(100dvh - 16px - var(--safe-t) - var(--safe-b));
+  max-height: calc(100dvh - 16px - var(--safe-t) - var(--safe-b));
+  margin: auto;
+  border-radius: 16px;
 }
 .mobil-dialog::backdrop { background: rgba(0,0,0,.45); }
 .dialog-body { padding: 20px 18px 24px; }

@@ -1145,7 +1145,15 @@ async function musteriKaydet(event) {
       document.getElementById('musteriEkleForm').reset();
       musteriFormTurSec('ekle', 'Gercek');
       modalKapat(document.getElementById('musteriEkleModal'));
-      musterileriGetir();
+      await musterileriGetir();
+      await ozetBilgileriniGetir();
+      const yeniId = Number(data.musteriID);
+      if (Number.isInteger(yeniId) && yeniId > 0) {
+        musteriListeModalGeriAc = true;
+        await musteriDetayModalAc(yeniId);
+      } else {
+        modalAc(document.getElementById('musteriListeModal'));
+      }
     } else {
       alert(data.message || 'Müşteri eklenirken hata oluştu.');
     }
