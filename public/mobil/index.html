@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="mobil.css?v=54">
+  <link rel="stylesheet" href="mobil.css?v=56">
 </head>
 <body>
   <div id="view-login" class="view view-active">
@@ -333,6 +333,35 @@
     </form>
   </dialog>
 
+  <dialog id="dlgMusteriDuzenle" class="mobil-dialog mobil-dialog-center mobil-dialog-scroll">
+    <form id="formMusteriDuzenle" method="dialog" class="dialog-body">
+      <h2 class="dialog-title">Müşteri düzenle</h2>
+      <input type="hidden" id="duzenleMusteriID" value="">
+      <div id="duzenleGercekAlan">
+        <label class="field-label" for="duzenleMusteriAd">Ad Soyad</label>
+        <input id="duzenleMusteriAd" class="field-input" type="text" autocomplete="name">
+      </div>
+      <div id="duzenleTuzelAlan" hidden>
+        <label class="field-label" for="duzenleMusteriFirma">Firma ünvanı</label>
+        <input id="duzenleMusteriFirma" class="field-input" type="text" autocomplete="organization">
+        <label class="field-label" for="duzenleMusteriYetkili">Yetkili</label>
+        <input id="duzenleMusteriYetkili" class="field-input" type="text" autocomplete="name">
+      </div>
+      <label class="field-label" for="duzenleMusteriLakap">Lakap / tanım <span class="field-opsiyonel">(isteğe bağlı)</span></label>
+      <input id="duzenleMusteriLakap" class="field-input" type="text" autocomplete="off">
+      <label class="field-label" for="duzenleMusteriTel">Telefon <span class="field-opsiyonel">(isteğe bağlı)</span></label>
+      <input id="duzenleMusteriTel" class="field-input" type="tel" inputmode="numeric" placeholder="5321234567">
+      <p class="field-hint">Doldurursanız 10 hane, 0 ile başlamadan</p>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" data-dialog-close>İptal</button>
+        <button type="submit" class="btn btn-primary" id="btnMusteriDuzenleKaydet">Kaydet</button>
+      </div>
+      <div id="duzenleMusteriSilAlan" class="dialog-sil-alan" hidden>
+        <button type="button" class="btn btn-danger-outline" id="btnMusteriSil">Müşteriyi sil</button>
+      </div>
+    </form>
+  </dialog>
+
   <!-- Tahsilat -->
   <dialog id="dlgOdeme" class="mobil-dialog">
     <form id="formOdeme" method="dialog" class="dialog-body">
@@ -583,6 +612,6 @@
 
   <script src="vendor/html5-qrcode.min.js"></script>
   <script src="vendor/html2canvas.min.js"></script>
-  <script src="app.js?v=63"></script>
+  <script src="app.js?v=65"></script>
 </body>
 </html>

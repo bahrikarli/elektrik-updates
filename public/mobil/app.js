@@ -2359,6 +2359,155 @@
     }
   }
 
+  function musteriDuzenleDialogAc() {
+    const m = detayMusteriData?.musteri;
+    if (!m || !detayMusteriID) {
+      toast('Müşteri bulunamadı');
+      return;
+    }
+    const tuzel = musteriTuzelMi(m);
+    $('duzenleMusteriID').value = String(m.MusteriID || detayMusteriID);
+    $('duzenleGercekAlan').hidden = tuzel;
+    $('duzenleTuzelAlan').hidden = !tuzel;
+    $('duzenleMusteriAd').value = m.AdSoyad || '';
+    $('duzenleMusteriAd').required = !tuzel;
+    $('duzenleMusteriFirma').value = m.FirmaAdi || '';
+    $('duzenleMusteriFirma').required = tuzel;
+    $('duzenleMusteriYetkili').value = m.yetkili || '';
+    $('duzenleMusteriYetkili').required = tuzel;
+    $('duzenleMusteriLakap').value = m.TanimAdi || '';
+    let tel = String(m.Telefon || '').replace(/\D/g, '');
+    if (tel.startsWith('0')) tel = tel.slice(1);
+    $('duzenleMusteriTel').value = tel;
+    const silAlan = $('duzenleMusteriSilAlan');
+    if (silAlan) silAlan.hidden = !detayMusteriData?.silinebilir;
+    $('dlgMusteriDuzenle').showModal();
+    setTimeout(() => {
+      (tuzel ? $('duzenleMusteriFirma') : $('duzenleMusteriAd'))?.focus();
+    }, 200);
+  }
+
+  async function musteriDuzenleKaydet(ev) {
+    ev.preventDefault();
+    const id = Number($('duzenleMusteriID').value || detayMusteriID || 0);
+    const m = detayMusteriData?.musteri;
+    if (!id || !m) {
+      toast('Müşteri bulunamadı');
+      return;
+    }
+    let tel = ($('duzenleMusteriTel').value || '').replace(/\D/g, '');
+    if (tel.startsWith('0')) tel = tel.slice(1);
+    if (tel && !/^[1-9][0-9]{9}$/.test(tel)) {
+      toast('Telefon 10 hane olmalı (0 olmadan)');
+      return;
+    }
+    const tuzel = musteriTuzelMi(m);
+    const lakap = ($('duzenleMusteriLakap').value || '').trim() || null;
+    let body;
+    if (tuzel) {
+      const firma = ($('duzenleMusteriFirma').value || '').trim();
+      const yetkili = ($('duzenleMusteriYetkili').value || '').trim();
+      if (!firma) {
+        toast('Firma ünvanı girin');
+        return;
+      }
+      if (!yetkili) {
+        toast('Yetkili kişi girin');
+        return;
+      }
+      body = {
+        tur: 'Tuzel',
+        FirmaAdi: firma,
+        yetkili,
+        vergino: m.vergino || '',
+        AdSoyad: '',
+        tcno: '',
+        Telefon: tel || null,
+        TanimAdi: lakap,
+        Adres: m.Adres || null,
+        Il: m.Il || null,
+        Ilce: m.Ilce || null,
+        Mahalle: m.Mahalle || null,
+        Bakiye: Number(m.Bakiye) || 0,
+      };
+    } else {
+      const ad = ($('duzenleMusteriAd').value || '').trim();
+      if (!ad) {
+        toast('Ad soyad girin');
+        return;
+      }
+      body = {
+        tur: 'Gercek',
+        AdSoyad: ad,
+        tcno: m.tcno || '',
+        FirmaAdi: '',
+        yetkili: '',
+        vergino: '',
+        Telefon: tel || null,
+        TanimAdi: lakap,
+        Adres: m.Adres || null,
+        Il: m.Il || null,
+        Ilce: m.Ilce || null,
+        Mahalle: m.Mahalle || null,
+        Bakiye: Number(m.Bakiye) || 0,
+      };
+    }
+    try {
+      const res = await apiFetch(`/api/musteri/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok || payload.success === false) {
+        toast(payload.message || 'Güncellenemedi');
+        return;
+      }
+      $('dlgMusteriDuzenle').close();
+      toast('Müşteri güncellendi');
+      const musRes = await apiFetch('/api/musteri');
+      if (musRes.ok) musteriCache = await musRes.json();
+      musteriListele();
+      navKartOzetGuncelle();
+      await musteriDetayAc(id, true);
+    } catch (e) {
+      console.error(e);
+      toast('Bağlantı hatası');
+    }
+  }
+
+  async function musteriMobilSil() {
+    const id = Number($('duzenleMusteriID').value || detayMusteriID || 0);
+    const m = detayMusteriData?.musteri;
+    if (!id || !m) return;
+    if (!detayMusteriData?.silinebilir) {
+      toast('Hareketi olan müşteri silinemez');
+      return;
+    }
+    const ad = musteriGorunenAd(m);
+    $('dlgMusteriDuzenle')?.close();
+    const sifre = await silmeSifreOnayla(`"${ad}" silinecek. Şifrenizi girin.`);
+    if (!sifre) return;
+    try {
+      const res = await apiFetch(`/api/musteri/${id}`, { method: 'DELETE' });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok || payload.success === false) {
+        toast(payload.message || 'Silinemedi');
+        return;
+      }
+      toast(payload.message || 'Müşteri silindi');
+      musteriCache = musteriCache.filter((x) => Number(x.MusteriID) !== id);
+      detayMusteriID = null;
+      detayMusteriData = null;
+      musteriListele();
+      navKartOzetGuncelle();
+      musteriDetayDonusPanel = 'musteri';
+      panelGoster('musteri');
+    } catch (e) {
+      console.error(e);
+      toast('Bağlantı hatası');
+    }
+  }
+
   async function satisKaydet(ev) {
     ev.preventDefault();
     const duzenleMod = Number.isInteger(_gunlukDuzenleLogID) && _gunlukDuzenleLogID > 0;
@@ -2735,13 +2884,21 @@
       const m = data.musteri;
       const bakiye = Number(m.Bakiye) || 0;
       const bakiyeCls = bakiye > 0 ? 'bakiye-borc' : bakiye < 0 ? 'bakiye-alacak' : '';
+      const hareketYok = !(data.hareketler || []).length;
       ozet.innerHTML = `
-        <h2>${esc(musteriGorunenAd(m))}</h2>
+        <div class="detay-ozet-baslik">
+          <h2>${esc(musteriGorunenAd(m))}</h2>
+          <button type="button" class="detay-ozet-duzenle" data-musteri-duzenle="${m.MusteriID}" title="Düzenle" aria-label="Müşteriyi düzenle">✎</button>
+        </div>
         <p class="kart-alt">${m.Telefon ? esc(m.Telefon) : ''} ${m.Il ? '· ' + esc(m.Il) : ''}</p>
         <p class="detay-bakiye ${bakiyeCls}">${para(bakiye)}</p>
         <p class="kart-alt">Bakiye ${bakiye > 0 ? '(borç)' : bakiye < 0 ? '(alacak)' : ''}</p>`;
       $('btnMusteriOdeme').disabled = bakiye <= 0;
-      detayMusteriData = { musteri: m, hareketler: data.hareketler || [] };
+      detayMusteriData = {
+        musteri: m,
+        hareketler: data.hareketler || [],
+        silinebilir: hareketYok,
+      };
       const html = (data.hareketler || []).map((h) => hareketMobilHtml(h)).join('');
       ul.innerHTML = html || '<li class="bos-metin">Hareket yok</li>';
     } catch (e) {
@@ -3357,14 +3514,28 @@
             <button type="button" class="btn-text" data-ted-alim-sil="${i}">Sil</button>
           </div>
           <div class="sepet-satir-alt">
-            <label>Adet <input type="number" min="1" step="1" value="${s.miktar}" data-ted-alim-mik="${i}"></label>
-            <label>Alış <input type="number" min="0" step="0.01" value="${s.alisFiyati}" data-ted-alim-alis="${i}"></label>
+            <label>Adet <input type="number" min="1" step="1" inputmode="numeric" value="${s.miktar}" data-ted-alim-mik="${i}"></label>
+            <label>Alış <input type="number" min="0" step="0.01" inputmode="decimal" value="${s.alisFiyati}" data-ted-alim-alis="${i}"></label>
             <span class="sepet-satir-tutar">${para(satir)}</span>
           </div>
         </li>`;
       })
       .join('');
     if (top) top.textContent = para(tedAlimToplam());
+  }
+
+  function tedAlimSatirTutarGuncelle(i) {
+    const s = tedAlimSepet[i];
+    if (!s) return;
+    const satir = (Number(s.miktar) || 0) * (Number(s.alisFiyati) || 0);
+    const li = $('tedAlimSepet')?.children?.[i];
+    const tutarEl = li?.querySelector('.sepet-satir-tutar');
+    if (tutarEl) tutarEl.textContent = para(satir);
+    const top = $('tedAlimToplam');
+    if (top) top.textContent = para(tedAlimToplam());
+    if ($('tedAlimOdemeVar')?.checked && $('tedAlimOdenen')) {
+      $('tedAlimOdenen').value = tedAlimToplam().toFixed(2);
+    }
   }
 
   function tedAlimDialogAc() {
@@ -3604,14 +3775,41 @@
       const alis = e.target.closest('[data-ted-alim-alis]');
       if (mik) {
         const i = Number(mik.getAttribute('data-ted-alim-mik'));
-        const v = parseInt(mik.value, 10);
-        if (tedAlimSepet[i]) tedAlimSepet[i].miktar = Number.isFinite(v) && v > 0 ? v : 1;
-        tedAlimSepetCiz();
+        const raw = String(mik.value || '').trim();
+        if (raw === '') return;
+        const v = parseInt(raw, 10);
+        if (tedAlimSepet[i] && Number.isFinite(v) && v > 0) {
+          tedAlimSepet[i].miktar = v;
+          tedAlimSatirTutarGuncelle(i);
+        }
       } else if (alis) {
         const i = Number(alis.getAttribute('data-ted-alim-alis'));
-        const v = parseFloat(alis.value);
-        if (tedAlimSepet[i]) tedAlimSepet[i].alisFiyati = Number.isFinite(v) && v >= 0 ? v : 0;
-        tedAlimSepetCiz();
+        const raw = String(alis.value || '').trim();
+        if (raw === '' || raw === '.') return;
+        const v = parseFloat(raw);
+        if (tedAlimSepet[i] && Number.isFinite(v) && v >= 0) {
+          tedAlimSepet[i].alisFiyati = v;
+          tedAlimSatirTutarGuncelle(i);
+        }
+      }
+    });
+    $('tedAlimSepet')?.addEventListener('change', (e) => {
+      const mik = e.target.closest('[data-ted-alim-mik]');
+      const alis = e.target.closest('[data-ted-alim-alis]');
+      if (mik) {
+        const i = Number(mik.getAttribute('data-ted-alim-mik'));
+        let v = parseInt(mik.value, 10);
+        if (!Number.isFinite(v) || v < 1) v = 1;
+        if (tedAlimSepet[i]) tedAlimSepet[i].miktar = v;
+        mik.value = String(v);
+        tedAlimSatirTutarGuncelle(i);
+      } else if (alis) {
+        const i = Number(alis.getAttribute('data-ted-alim-alis'));
+        let v = parseFloat(alis.value);
+        if (!Number.isFinite(v) || v < 0) v = 0;
+        if (tedAlimSepet[i]) tedAlimSepet[i].alisFiyati = v;
+        alis.value = String(v);
+        tedAlimSatirTutarGuncelle(i);
       }
     });
 
@@ -3673,6 +3871,15 @@
       }
     };
     $('formMusteriEkle').onsubmit = musteriHizliEkle;
+    $('formMusteriDuzenle')?.addEventListener('submit', musteriDuzenleKaydet);
+    $('btnMusteriSil')?.addEventListener('click', musteriMobilSil);
+    $('musteriDetayOzet')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-musteri-duzenle]');
+      if (btn) {
+        e.preventDefault();
+        musteriDuzenleDialogAc();
+      }
+    });
     document.querySelectorAll('[data-dialog-close]').forEach((b) => {
       b.onclick = () => b.closest('dialog')?.close();
     });

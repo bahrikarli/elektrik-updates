@@ -1737,6 +1737,17 @@ app.delete('/api/musteri/:id', async (req, res) => {
 
     const musteriAdi = musteriGorunenAdKayit(musteriKontrol.recordset[0]);
 
+    const hareketKontrol = await pool.request()
+      .input('MusteriID', sql.Int, id)
+      .query('SELECT COUNT(*) AS Sayi FROM MusteriHareketleri WHERE MusteriID = @MusteriID');
+    const hareketSayisi = Number(hareketKontrol.recordset[0]?.Sayi || 0);
+    if (hareketSayisi > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Bu müşterinin ${hareketSayisi} adet cari hareketi var. Hareket varken müşteri silinemez.`,
+      });
+    }
+
     const servisKontrol = await pool.request()
       .input('MusteriID', sql.Int, id)
       .query('SELECT COUNT(*) AS Sayi FROM ServisIsleri WHERE MusteriID = @MusteriID');
