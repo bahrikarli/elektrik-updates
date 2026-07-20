@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="mobil.css?v=57">
+  <link rel="stylesheet" href="mobil.css?v=60">
 </head>
 <body>
   <div id="view-login" class="view view-active">
@@ -478,6 +478,36 @@
     </form>
   </dialog>
 
+  <dialog id="dlgStokYok" class="mobil-dialog mobil-dialog-center dlg-stok-yok">
+    <form id="formStokYok" method="dialog" class="dialog-body stok-yok-body">
+      <span class="stok-yok-rozet">Stokta yok</span>
+      <h2 class="dialog-title stok-yok-baslik">Stoğa eklensin mi?</h2>
+      <p class="stok-yok-aciklama">Aradığınız ürün bulunamadı. Stoğa kaydedip sepete ekleyebilirsiniz.</p>
+      <label class="field-label" for="stokYokUrunAdi">Ürün adı</label>
+      <input id="stokYokUrunAdi" class="field-input" type="text" required autocomplete="off">
+      <p class="field-hint stok-yok-hint">Mevcut sepet bozulmaz; kayıttan sonra ürün sepete eklenir.</p>
+      <button type="submit" class="btn btn-primary btn-block" id="btnStokYokOnay">Evet, stoğa ekle</button>
+      <button type="button" class="btn-text stok-yok-vazgec" data-dialog-close>Vazgeç</button>
+    </form>
+  </dialog>
+
+  <dialog id="dlgAdetGir" class="mobil-dialog mobil-dialog-center dlg-adet-gir">
+    <form id="formAdetGir" method="dialog" class="dialog-body adet-gir-body">
+      <h2 class="dialog-title">Adet gir</h2>
+      <p id="dlgAdetGirUrun" class="adet-gir-urun"></p>
+      <div class="adet-gir-kontrol">
+        <button type="button" class="adet-gir-btn" id="btnAdetGirAz" aria-label="Azalt">−</button>
+        <input id="adetGirInput" class="field-input adet-gir-input" type="number" min="0" step="1" inputmode="numeric" required>
+        <button type="button" class="adet-gir-btn" id="btnAdetGirArt" aria-label="Artır">+</button>
+      </div>
+      <p class="adet-gir-hint">0 yazarsanız satır sepetten çıkar</p>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" data-dialog-close>İptal</button>
+        <button type="submit" class="btn btn-primary">Tamam</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="dlgSilOnay" class="mobil-dialog">
     <form id="formSilOnay" method="dialog" class="dialog-body">
       <h2 class="dialog-title">Silme onayı</h2>
@@ -612,6 +642,6 @@
 
   <script src="vendor/html5-qrcode.min.js"></script>
   <script src="vendor/html2canvas.min.js"></script>
-  <script src="app.js?v=66"></script>
+  <script src="app.js?v=69"></script>
 </body>
 </html>

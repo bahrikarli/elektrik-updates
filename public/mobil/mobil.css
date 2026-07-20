@@ -406,6 +406,147 @@ body { overflow: hidden; }
   color: var(--primary);
   font-weight: 600;
 }
+.arama-item-stok-yok {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+  margin-top: 4px;
+}
+.arama-item-stok-yok .arama-stok-yok-baslik {
+  color: var(--primary);
+  font-weight: 700;
+  font-size: 0.98rem;
+}
+.arama-item-stok-yok .arama-item-alt {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.dlg-stok-yok {
+  max-width: min(92vw, 380px);
+}
+.stok-yok-body {
+  text-align: center;
+  padding-top: 18px;
+}
+.stok-yok-rozet {
+  display: inline-block;
+  margin: 0 auto 10px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #ffedd5;
+  color: #c2410c;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.stok-yok-baslik {
+  margin: 0 0 8px;
+  text-align: center;
+}
+.stok-yok-aciklama {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  text-align: center;
+}
+.stok-yok-body .field-label {
+  text-align: left;
+}
+.stok-yok-body .field-input {
+  text-align: left;
+  margin-bottom: 4px;
+}
+.stok-yok-hint {
+  text-align: left;
+  margin-bottom: 16px;
+}
+.stok-yok-body .btn-block {
+  width: 100%;
+  margin-bottom: 8px;
+}
+.stok-yok-vazgec {
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding: 10px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.sepet-miktar-duzenle {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid #eab308;
+  background: #facc15;
+  color: #111;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
+}
+.sepet-miktar-duzenle:active { background: #eab308; }
+.dlg-adet-gir {
+  max-width: min(92vw, 380px);
+}
+.adet-gir-body .dialog-title {
+  margin-bottom: 6px;
+}
+.adet-gir-urun {
+  margin: 0 0 16px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #111;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+.adet-gir-kontrol {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.adet-gir-btn {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #f3f4f6;
+  color: var(--primary);
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
+}
+.adet-gir-btn:active { background: #e5e7eb; }
+.adet-gir-input {
+  width: 96px;
+  min-width: 96px;
+  height: 44px;
+  text-align: center;
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  padding: 6px 8px;
+  margin: 0;
+}
+.adet-gir-hint {
+  margin: 0 0 14px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
 .btn-sm {
   padding: 10px 14px;
   font-size: 0.92rem;

@@ -27,7 +27,12 @@
   let gunlukSonData = null;
   let gunlukBugunData = null;
   let stokDuzenlemeID = null;
+  let stokEkleDonusHedef = null; /* 'satis' | 'musteri-satis' | null */
+  let _stokYokOnaylandi = false;
   let musteriSatisSepet = [];
+  let _adetGirResolve = null;
+  let _adetGirHedef = 'satis';
+  let _adetGirIdx = -1;
   let sirketAyarlar = null;
   let musteriEkleKaynak = 'liste';
   const SON_ISLEM_ADET = 7;
@@ -1933,6 +1938,7 @@
               <button type="button" class="sepet-miktar-btn" data-az="${idx}">−</button>
               <span class="sepet-miktar">${s.miktar}</span>
               <button type="button" class="sepet-miktar-btn" data-art="${idx}">+</button>
+              <button type="button" class="sepet-miktar-duzenle" data-mik-duz="${idx}" title="Adet gir" aria-label="Adet gir">✎</button>
             </div>
             <span class="sepet-satir-tutar">${para(satirTutar)}</span>
             <button type="button" class="sepet-sil" data-sil="${idx}" aria-label="Sil">×</button>
@@ -1955,6 +1961,9 @@
       ul.querySelectorAll('[data-art]').forEach((btn) => {
         btn.onclick = () => { sepet[+btn.dataset.art].miktar += 1; sepetCiz(); };
       });
+      ul.querySelectorAll('[data-mik-duz]').forEach((btn) => {
+        btn.onclick = () => sepetMiktarManuelAc(+btn.dataset.mikDuz, 'satis');
+      });
       ul.querySelectorAll('[data-sil]').forEach((btn) => {
         btn.onclick = () => { sepet.splice(+btn.dataset.sil, 1); sepetCiz(); };
       });
@@ -1963,11 +1972,31 @@
     navKartOzetGuncelle();
   }
 
+  function stokYokSoruKarti(box, kelime, hedef) {
+    if (!box) return;
+    const k = String(kelime || '').trim();
+    box.innerHTML = '';
+    if (k.length < 2) {
+      box.hidden = true;
+      return;
+    }
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'arama-item arama-item-stok-yok';
+    btn.innerHTML = `
+      <span class="arama-stok-yok-baslik">Stoğa eklensin mi?</span>
+      <span class="arama-item-alt">"${esc(k)}" — kaydedince sepete eklenir</span>`;
+    btn.onclick = () => stokYokModalAc(k, hedef);
+    box.appendChild(btn);
+    box.hidden = false;
+  }
+
   function satisAramaGoster(q) {
     const box = $('satisAramaSonuc');
     const trimmed = String(q || '').trim();
     if (!trimmed) {
       box.hidden = true;
+      if ($('dlgStokYok')?.open) $('dlgStokYok').close();
       return;
     }
     const { liste: filtre } = stokAraFiltrele(trimmed, 25);
@@ -1981,9 +2010,11 @@
     }
     box.innerHTML = '';
     if (filtre.length === 0) {
-      box.hidden = true;
+      if ($('dlgStokYok')?.open) $('dlgStokYok').close();
+      stokYokSoruKarti(box, trimmed, 'satis');
       return;
     }
+    if ($('dlgStokYok')?.open) $('dlgStokYok').close();
     filtre.forEach((u) => {
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -2095,6 +2126,7 @@
               <button type="button" class="sepet-miktar-btn" data-ms-az="${idx}">−</button>
               <span class="sepet-miktar">${s.miktar}</span>
               <button type="button" class="sepet-miktar-btn" data-ms-art="${idx}">+</button>
+              <button type="button" class="sepet-miktar-duzenle" data-ms-mik-duz="${idx}" title="Adet gir" aria-label="Adet gir">✎</button>
             </div>
             <span class="sepet-satir-tutar">${para(satirTutar)}</span>
             <button type="button" class="sepet-sil" data-ms-sil="${idx}" aria-label="Sil">×</button>
@@ -2117,6 +2149,9 @@
       });
       ul.querySelectorAll('[data-ms-art]').forEach((b) => {
         b.onclick = () => { musteriSatisSepet[+b.dataset.msArt].miktar += 1; musteriSatisSepetCiz(); musteriSatisTahsilatGuncelle(); };
+      });
+      ul.querySelectorAll('[data-ms-mik-duz]').forEach((b) => {
+        b.onclick = () => sepetMiktarManuelAc(+b.dataset.msMikDuz, 'musteri');
       });
       ul.querySelectorAll('[data-ms-sil]').forEach((b) => {
         b.onclick = () => { musteriSatisSepet.splice(+b.dataset.msSil, 1); musteriSatisSepetCiz(); musteriSatisTahsilatGuncelle(); };
@@ -2151,10 +2186,20 @@
     const box = $('musteriSatisAramaSonuc');
     const trimmed = String(q || '').trim();
     if (!box) return;
-    if (!trimmed) { box.hidden = true; box.innerHTML = ''; return; }
+    if (!trimmed) {
+      box.hidden = true;
+      box.innerHTML = '';
+      if ($('dlgStokYok')?.open) $('dlgStokYok').close();
+      return;
+    }
     const { liste: filtre } = stokAraFiltrele(trimmed, 15);
     box.innerHTML = '';
-    if (!filtre.length) { box.hidden = true; return; }
+    if (!filtre.length) {
+      if ($('dlgStokYok')?.open) $('dlgStokYok').close();
+      stokYokSoruKarti(box, trimmed, 'musteri-satis');
+      return;
+    }
+    if ($('dlgStokYok')?.open) $('dlgStokYok').close();
     filtre.forEach((u) => {
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -2639,7 +2684,111 @@
     $('stokBirim').value = 'Adet';
   }
 
+  function stokYokModalAc(kelime, hedef) {
+    const k = String(kelime || '').trim();
+    if (k.length < 2) return;
+    stokEkleDonusHedef = hedef === 'musteri-satis' ? 'musteri-satis' : 'satis';
+    const inp = $('stokYokUrunAdi');
+    if (inp) inp.value = k;
+    const dlg = $('dlgStokYok');
+    if (!dlg) return;
+    const ilkAcilis = !dlg.open;
+    if (ilkAcilis) dlg.showModal();
+    if (ilkAcilis) {
+      setTimeout(() => {
+        inp?.focus();
+        inp?.select?.();
+      }, 80);
+    }
+  }
+
+  function stokEkleSatistanAc(kelime) {
+    const hedef = stokEkleDonusHedef;
+    stokFormTemizle();
+    stokEkleDonusHedef = hedef;
+    $('dlgStokBaslik').textContent = 'Yeni ürün (satışa ekle)';
+    const k = String(kelime || '').trim();
+    if (k) {
+      const sadeceRakam = /^\d{6,}$/.test(k);
+      if (sadeceRakam) $('stokBarkod').value = k;
+      else $('stokUrunAdi').value = k;
+    }
+    $('dlgStok').showModal();
+    setTimeout(() => {
+      const odak = ($('stokUrunAdi')?.value || '').trim() ? $('stokSatis') : $('stokUrunAdi');
+      odak?.focus();
+    }, 80);
+  }
+
+  function stokYokOnayla(ev) {
+    ev.preventDefault();
+    const ad = ($('stokYokUrunAdi').value || '').trim();
+    if (!ad) {
+      toast('Ürün adı girin');
+      return;
+    }
+    _stokYokOnaylandi = true;
+    $('dlgStokYok')?.close();
+    stokEkleSatistanAc(ad);
+  }
+
+  function sepetMiktarManuelAc(idx, hedef) {
+    const liste = hedef === 'musteri' ? musteriSatisSepet : sepet;
+    const s = liste[idx];
+    if (!s) return;
+    _adetGirHedef = hedef === 'musteri' ? 'musteri' : 'satis';
+    _adetGirIdx = idx;
+    const adEl = $('dlgAdetGirUrun');
+    if (adEl) adEl.textContent = s.urunAdi || '';
+    const inp = $('adetGirInput');
+    if (inp) inp.value = String(s.miktar || 1);
+    $('dlgAdetGir')?.showModal();
+    setTimeout(() => {
+      inp?.focus();
+      inp?.select?.();
+    }, 80);
+  }
+
+  function adetGirDegistir(delta) {
+    const inp = $('adetGirInput');
+    if (!inp) return;
+    let v = parseInt(inp.value, 10);
+    if (!Number.isFinite(v)) v = 0;
+    v = Math.max(0, v + delta);
+    inp.value = String(v);
+    inp.focus();
+    inp.select?.();
+  }
+
+  function adetGirKaydet(ev) {
+    ev.preventDefault();
+    const raw = String($('adetGirInput')?.value || '').trim();
+    const v = parseInt(raw, 10);
+    if (!Number.isFinite(v) || v < 0) {
+      toast('Geçerli adet girin');
+      return;
+    }
+    const liste = _adetGirHedef === 'musteri' ? musteriSatisSepet : sepet;
+    if (!liste[_adetGirIdx]) {
+      $('dlgAdetGir')?.close();
+      return;
+    }
+    if (v === 0) {
+      liste.splice(_adetGirIdx, 1);
+    } else {
+      liste[_adetGirIdx].miktar = v;
+    }
+    $('dlgAdetGir')?.close();
+    if (_adetGirHedef === 'musteri') {
+      musteriSatisSepetCiz();
+      musteriSatisTahsilatGuncelle();
+    } else {
+      sepetCiz();
+    }
+  }
+
   function stokEkleDialogAc() {
+    stokEkleDonusHedef = null;
     stokFormTemizle();
     $('dlgStok').showModal();
     setTimeout(() => $('stokUrunAdi')?.focus(), 80);
@@ -2648,6 +2797,7 @@
   function stokDuzenleDialogAc(id) {
     const s = stokCache.find((x) => Number(x.StokID) === Number(id));
     if (!s) return;
+    stokEkleDonusHedef = null;
     stokDuzenlemeID = Number(id);
     $('dlgStokBaslik').textContent = 'Stok düzenle';
     $('stokUrunAdi').value = s.UrunAdi || '';
@@ -2687,20 +2837,47 @@
       kullanici: aktifKullanici,
     };
     const duzenle = Number.isInteger(stokDuzenlemeID) && stokDuzenlemeID > 0;
+    const donus = stokEkleDonusHedef;
     try {
       const res = await apiFetch(duzenle ? `/api/stok/${stokDuzenlemeID}` : '/api/stok', {
         method: duzenle ? 'PUT' : 'POST',
         body: JSON.stringify(body),
       });
       if (res.ok) {
+        let yeniKayit = null;
+        if (!duzenle) {
+          yeniKayit = await res.json().catch(() => null);
+        } else {
+          await res.text().catch(() => '');
+        }
+        stokEkleDonusHedef = null;
         $('dlgStok').close();
         stokFormTemizle();
-        toast(duzenle ? 'Stok güncellendi' : 'Ürün eklendi');
         const stokRes = await apiFetch('/api/stok');
         stokCache = stokRes.ok ? await stokRes.json() : stokCache;
         stokCacheIndeksle();
         stokListele();
         navKartOzetGuncelle();
+        if (donus && !duzenle) {
+          let urun = yeniKayit && yeniKayit.StokID ? yeniKayit : null;
+          if (!urun && yeniKayit?.UrunAdi) {
+            const adNorm = String(yeniKayit.UrunAdi).toLocaleLowerCase('tr-TR');
+            urun = stokCache.find((s) => String(s.UrunAdi || '').toLocaleLowerCase('tr-TR') === adNorm);
+          }
+          if (!urun) {
+            const adNorm = ad.toLocaleLowerCase('tr-TR');
+            urun = stokCache.find((s) => String(s.UrunAdi || '').toLocaleLowerCase('tr-TR') === adNorm);
+          }
+          if (urun) {
+            if (donus === 'musteri-satis') musteriSatisSepeteEkle(urun);
+            else sepeteEkle(urun);
+            toast('Ürün eklendi ve sepete kondu');
+          } else {
+            toast('Ürün eklendi');
+          }
+        } else {
+          toast(duzenle ? 'Stok güncellendi' : 'Ürün eklendi');
+        }
       } else {
         const msg = await res.text().catch(() => '');
         toast(msg || 'Kayıt başarısız');
@@ -3839,7 +4016,9 @@
       const q = e.target.value.trim();
       const { liste: filtre } = stokAraFiltrele(q, 25);
       if (filtre.length === 1) sepeteEkle(filtre[0]);
-      else if (filtre.length === 0) toast('Ürün bulunamadı');
+      else if (filtre.length === 0 && q.length >= 2) {
+        stokYokSoruKarti($('satisAramaSonuc'), q, 'satis');
+      } else if (filtre.length === 0) toast('Ürün bulunamadı');
     });
     $('btnSepetTemizle').onclick = () => { sepet = []; sepetCiz(); };
     $('btnSatisTamamla').onclick = satisDialogAc;
@@ -3879,6 +4058,17 @@
     };
     $('formMusteriEkle').onsubmit = musteriHizliEkle;
     $('formMusteriDuzenle')?.addEventListener('submit', musteriDuzenleKaydet);
+    $('formStokYok')?.addEventListener('submit', stokYokOnayla);
+    $('formAdetGir')?.addEventListener('submit', adetGirKaydet);
+    $('btnAdetGirAz')?.addEventListener('click', () => adetGirDegistir(-1));
+    $('btnAdetGirArt')?.addEventListener('click', () => adetGirDegistir(1));
+    $('dlgStokYok')?.addEventListener('close', () => {
+      if (!_stokYokOnaylandi) stokEkleDonusHedef = null;
+      _stokYokOnaylandi = false;
+    });
+    $('dlgStok')?.addEventListener('close', () => {
+      stokEkleDonusHedef = null;
+    });
     $('btnMusteriSil')?.addEventListener('click', musteriMobilSil);
     $('musteriDetayOzet')?.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-musteri-duzenle]');
