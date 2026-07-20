@@ -132,6 +132,11 @@
     return String(m?.TanimAdi || '').trim();
   }
 
+  function musteriAltKimlik(m) {
+    const lakap = musteriLakap(m);
+    return lakap || `#${m?.MusteriID || ''}`;
+  }
+
   function musteriKonum(m) {
     const parcalar = [m?.Adres, m?.Ilce, m?.Il].map((x) => String(x || '').trim()).filter(Boolean);
     return parcalar.join(', ') || '—';
@@ -2260,14 +2265,15 @@
     const filtre = musteriCache.filter((m) => {
       const ad = musteriGorunenAd(m).toLocaleLowerCase('tr-TR');
       const tel = String(m.Telefon || '').toLowerCase();
-      return ad.includes(trimmedLo) || tel.includes(trimmedLo) || String(m.MusteriID).includes(trimmed);
+      const lakap = musteriLakap(m).toLocaleLowerCase('tr-TR');
+      return ad.includes(trimmedLo) || tel.includes(trimmedLo) || lakap.includes(trimmedLo) || String(m.MusteriID).includes(trimmed);
     }).slice(0, 15);
     box.innerHTML = '';
     filtre.forEach((m) => {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'arama-item';
-      btn.innerHTML = `<span>${esc(musteriGorunenAd(m))}<span class="arama-item-alt">#${m.MusteriID}</span></span>`;
+      btn.innerHTML = `<span>${esc(musteriGorunenAd(m))}<span class="arama-item-alt">${esc(musteriAltKimlik(m))}</span></span>`;
       btn.onclick = () => satisMusteriSec(m);
       box.appendChild(btn);
     });
@@ -2812,7 +2818,8 @@
       liste = liste.filter((m) => {
         const ad = musteriGorunenAd(m).toLocaleLowerCase('tr-TR');
         const tel = String(m.Telefon || '').toLowerCase();
-        return ad.includes(q) || tel.includes(q) || String(m.MusteriID).includes(q);
+        const lakap = musteriLakap(m).toLocaleLowerCase('tr-TR');
+        return ad.includes(q) || tel.includes(q) || lakap.includes(q) || String(m.MusteriID).includes(q);
       });
     }
     liste = [...liste].sort((a, b) => Number(b.Bakiye || 0) - Number(a.Bakiye || 0));
@@ -2827,7 +2834,7 @@
       ul.appendChild(
         kartListeHtml({
           baslik: musteriGorunenAd(m),
-          alt: `${m.Telefon ? esc(m.Telefon) + ' · ' : ''}#${m.MusteriID}`,
+          alt: `${m.Telefon ? esc(m.Telefon) + ' · ' : ''}${esc(musteriAltKimlik(m))}`,
           tutar: para(bakiye),
           tutarCls: bakiyeCls,
           rozet,
