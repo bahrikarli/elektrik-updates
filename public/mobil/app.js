@@ -3285,7 +3285,7 @@
 
   async function musteriHareketSil(hareketID) {
     const sifre = await silmeSifreOnayla(
-      'Bu cari işlemi silinecek. Stok, kasa, bakiye ve günlük kayıt geri alınır. Şifrenizi girin.',
+      'Seçilen cari işlem silinecek (bağlı tahsilat/satış ayrı kalır). Stok, kasa ve bakiye buna göre güncellenir. Şifrenizi girin.',
     );
     if (!sifre) return;
     try {

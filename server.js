@@ -2343,8 +2343,8 @@ app.post('/api/musteri/:id/satis-sepet', async (req, res) => {
         rqCariTah.input('Tutar', sql.Decimal(18, 2), tahsilat);
         const cTah = await rqCariTah.query(`
           UPDATE Musteriler
-          SET Bakiye = Bakiye - @Tutar
-          WHERE MusteriID = @MusteriID AND Bakiye >= @Tutar
+          SET Bakiye = ISNULL(Bakiye, 0) - @Tutar
+          WHERE MusteriID = @MusteriID
         `);
         if (cTah.rowsAffected[0] === 0) {
           await transaction.rollback();
@@ -3609,7 +3609,37 @@ app.patch('/api/musteri/hareket/:hareketID/duzenle', async (req, res) => {
   }
 });
 
-/** Müşteri hareket grubunu (referanslı satış+tahsilat vb.) geri alır */
+/** Aynı referanslı satışın kalan tutarını kalan tahsilatlara göre günceller */
+async function musteriSatisKalanGuncelleTxn(transaction, musteriID, referans, excludeHareketID) {
+  const ref = String(referans || '').trim();
+  if (!ref || !Number.isInteger(musteriID) || musteriID < 1) return;
+  const odRs = await new sql.Request(transaction)
+    .input('MusteriID', sql.Int, musteriID)
+    .input('Referans', sql.NVarChar(40), ref.substring(0, 40))
+    .input('ExcludeID', sql.Int, Number.isInteger(excludeHareketID) ? excludeHareketID : 0)
+    .query(`
+      SELECT ISNULL(SUM(OdenenTutar), 0) AS Toplam
+      FROM MusteriHareketleri
+      WHERE MusteriID = @MusteriID AND Referans = @Referans
+        AND Tur IN (N'Odeme', N'IadeOdeme')
+        AND HareketID <> @ExcludeID
+    `);
+  const odenen = Math.round(Number(odRs.recordset[0]?.Toplam || 0) * 100) / 100;
+  await new sql.Request(transaction)
+    .input('MusteriID', sql.Int, musteriID)
+    .input('Referans', sql.NVarChar(40), ref.substring(0, 40))
+    .input('Odenen', sql.Decimal(18, 2), odenen)
+    .query(`
+      UPDATE MusteriHareketleri
+      SET KalanTutar = CASE
+            WHEN ToplamTutar - @Odenen < 0 THEN 0
+            ELSE ToplamTutar - @Odenen
+          END
+      WHERE MusteriID = @MusteriID AND Referans = @Referans AND Tur = N'Satis'
+    `);
+}
+
+/** Tek müşteri hareketini geri alır (satış ve tahsilat ayrı silinir) */
 async function musteriHareketGrupIptal(pool, hareketID, kullanici) {
   const hedefRs = await pool.request()
     .input('HareketID', sql.Int, hareketID)
@@ -3622,43 +3652,34 @@ async function musteriHareketGrupIptal(pool, hareketID, kullanici) {
     return { success: false, status: 404, message: 'Hareket bulunamadı.' };
   }
   const hedef = hedefRs.recordset[0];
-  const ref = (hedef.Referans || '').trim();
-
-  let grupRs;
-  if (ref) {
-    grupRs = await pool.request()
-      .input('MusteriID', sql.Int, hedef.MusteriID)
-      .input('Referans', sql.NVarChar(40), ref)
-      .query(`
-        SELECT HareketID, MusteriID, Tur, ToplamTutar, OdenenTutar, KalanTutar, Referans, Aciklama, Tarih
-        FROM MusteriHareketleri
-        WHERE MusteriID = @MusteriID AND Referans = @Referans
-        ORDER BY HareketID ASC
-      `);
-  } else {
-    grupRs = { recordset: [hedef] };
-  }
-  const grup = grupRs.recordset || [];
-  if (!grup.length) {
-    return { success: false, status: 404, message: 'Hareket grubu bulunamadı.' };
-  }
+  // Aynı anda alınan satış+tahsilat ayrı satırlar; yalnızca seçilen hareket silinir.
+  const grup = [hedef];
 
   const transaction = new sql.Transaction(pool);
   await transaction.begin();
   try {
     for (const h of grup) {
         if ((h.Tur || '').toLowerCase() === 'satis') {
+          const odenenGomulu = Math.round(Number(h.OdenenTutar || 0) * 100) / 100;
+          const cariTutar = odenenGomulu > 0.009
+            ? Math.round(Number(h.KalanTutar != null ? h.KalanTutar : (Number(h.ToplamTutar || 0) - odenenGomulu)) * 100) / 100
+            : Math.round(Number(h.ToplamTutar || 0) * 100) / 100;
           const rqCari = new sql.Request(transaction);
           rqCari.input('MusteriID', sql.Int, h.MusteriID);
-          rqCari.input('Tutar', sql.Decimal(18, 2), Number(h.ToplamTutar || 0));
+          rqCari.input('Tutar', sql.Decimal(18, 2), cariTutar);
           const upd = await rqCari.query(`
             UPDATE Musteriler
-            SET Bakiye = Bakiye - @Tutar
-            WHERE MusteriID = @MusteriID AND Bakiye >= @Tutar
+            SET Bakiye = ISNULL(Bakiye, 0) - @Tutar
+            WHERE MusteriID = @MusteriID
           `);
           if (upd.rowsAffected[0] === 0) {
             await transaction.rollback();
-            return { success: false, status: 409, message: 'Satış geri alınamadı (bakiye yetersiz).' };
+            return { success: false, status: 404, message: 'Müşteri bulunamadı; satış geri alınamadı.' };
+          }
+          if (odenenGomulu > 0.009) {
+            let kasaAciklama = `Müşteri hareket iptali — Satış tahsilatı geri alındı [#${h.HareketID}]`;
+            if (kasaAciklama.length > 255) kasaAciklama = kasaAciklama.substring(0, 252) + '...';
+            await kasayaIsleTxn(transaction, 'Cikis', odenenGomulu, kasaAciklama, kullanici);
           }
 
           const detRs = await new sql.Request(transaction)
@@ -3738,6 +3759,12 @@ async function musteriHareketGrupIptal(pool, hareketID, kullanici) {
             if (kasaAciklama.length > 255) kasaAciklama = kasaAciklama.substring(0, 252) + '...';
             await kasayaIsleTxn(transaction, 'Cikis', odeme, kasaAciklama, kullanici);
           }
+          await musteriSatisKalanGuncelleTxn(
+            transaction,
+            h.MusteriID,
+            h.Referans,
+            Number(h.HareketID),
+          );
         } else if ((h.Tur || '').toLowerCase() === 'iade') {
           const cariDusum = Number(h.KalanTutar || 0);
           if (cariDusum > 0) {
@@ -3792,7 +3819,7 @@ async function musteriHareketGrupIptal(pool, hareketID, kullanici) {
     console.warn('Günlük işlem senkronu atlandı:', syncErr.message);
   }
 
-  return { success: true, message: 'İşlem geri alındı; günlük kayıt iptal edildi.' };
+  return { success: true, message: 'İşlem silindi; günlük kayıt güncellendi.' };
 }
 
 /** Stok/kasa cari silmede zaten geri alındı — yalnızca hızlı satış iptal bayrağı */
@@ -7031,8 +7058,8 @@ async function hizliSatisMusteriCariKaydet(transaction, opts) {
       .input('Tutar', sql.Decimal(18, 2), tahsilat)
       .query(`
         UPDATE Musteriler
-        SET Bakiye = Bakiye - @Tutar
-        WHERE MusteriID = @MusteriID AND Bakiye >= @Tutar
+        SET Bakiye = ISNULL(Bakiye, 0) - @Tutar
+        WHERE MusteriID = @MusteriID
       `);
     if (cTah.rowsAffected[0] === 0) {
       return { ok: false, message: 'Tahsilat için bakiye güncellenemedi.' };

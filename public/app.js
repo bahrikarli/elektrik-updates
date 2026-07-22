@@ -3548,7 +3548,7 @@ function musteriHareketDetayYazdirOnizle() {
 }
 
 async function musteriHareketSil(hareketID) {
-  if (!confirm('Bu işlemi silmek istiyor musunuz? Stok, cari ve kasa kayıtları geri alınır.')) return;
+  if (!confirm('Seçilen işlem silinsin mi? Bağlı tahsilat/satış ayrı kalır. Stok, cari ve kasa buna göre güncellenir.')) return;
   const res = await fetch(`/api/musteri/hareket/${hareketID}?kullanici=${encodeURIComponent(aktifKullanici || 'Sistem')}`, {
     method: 'DELETE',
   });
