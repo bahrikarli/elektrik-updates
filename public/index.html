@@ -1826,6 +1826,16 @@
                                      style="left: 0; right: 0; top: 100%; z-index: 4000;">
                                 </div>
                             </div>
+                            <div class="col-auto d-flex flex-wrap gap-1">
+                                <button type="button" class="btn btn-lg btn-outline-success fw-semibold shadow-sm"
+                                        onclick="stokDisiModalAc('hizli', 'iscilik')" title="İşçilik ekle (stoka yazılmaz)">
+                                    <i class="fa-solid fa-screwdriver-wrench me-1"></i>İşçilik
+                                </button>
+                                <button type="button" class="btn btn-lg btn-outline-warning fw-semibold shadow-sm"
+                                        onclick="stokDisiModalAc('hizli')" title="Stoka yazmadan sepete ekle">
+                                    <i class="fa-solid fa-pen-to-square me-1"></i>Stok dışı
+                                </button>
+                            </div>
                             <div class="col-auto" style="width: 5.5rem;">
                                 <label for="hizliSatisMiktar" class="visually-hidden">Adet</label>
                                 <input type="number" class="form-control form-control-lg text-center fw-bold shadow-sm rounded-3 border"
@@ -2217,8 +2227,8 @@
                                     </div>
                                     <div class="col-md-4 col-12">
                                         <div class="musteri-ozet-kutu text-center h-100">
-                                            <div class="etiket">Kalan bakiye</div>
-                                            <div class="deger text-danger" id="mdKalanBakiye">0.00 ₺</div>
+                                            <div class="etiket" id="mdKalanBakiyeEtiket">Kalan bakiye</div>
+                                            <div class="deger text-secondary" id="mdKalanBakiye" data-bakiye="0">0.00 ₺</div>
                                         </div>
                                     </div>
                                 </div>
@@ -2285,8 +2295,9 @@
                             <div class="small text-muted mb-2">Müşteri: <strong id="mdTahsilatMusteri">-</strong></div>
                             <div class="alert alert-warning border-0 py-2 px-3 small mb-3" role="note">
                                 <i class="fa-solid fa-circle-info me-1"></i>
-                                <span>Kalan borç:</span>
+                                <span id="mdTahsilatBorcEtiket">Kalan borç:</span>
                                 <strong class="text-danger ms-1" id="mdTahsilatBorc">—</strong>
+                                <div class="text-muted mt-1 mb-0">Borç yokken de ön ödeme / avans alınabilir; tutar müşteri alacağına yazılır.</div>
                             </div>
                             <div class="mb-2">
                                 <label class="form-label small mb-0">Tutar (₺)</label>
@@ -2332,7 +2343,11 @@
                                     </div>
                                     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
                                         <span class="md-satis-kalem-baslik"><i class="fa-solid fa-basket-shopping"></i> Sepet</span>
-                                        <button type="button" class="btn btn-sm btn-outline-success" onclick="musteriSatisStokEkleModalAc('')"><i class="fa-solid fa-box-open me-1"></i>Stok ürün ekle</button>
+                                        <div class="d-flex flex-wrap gap-1">
+                                            <button type="button" class="btn btn-sm btn-outline-success" onclick="stokDisiModalAc('musteri', 'iscilik')"><i class="fa-solid fa-screwdriver-wrench me-1"></i>İşçilik</button>
+                                            <button type="button" class="btn btn-sm btn-outline-warning" onclick="stokDisiModalAc('musteri')"><i class="fa-solid fa-pen-to-square me-1"></i>Stok dışı</button>
+                                            <button type="button" class="btn btn-sm btn-outline-success" onclick="musteriSatisStokEkleModalAc('')"><i class="fa-solid fa-box-open me-1"></i>Stok ürün ekle</button>
+                                        </div>
                                     </div>
                                     <div class="mb-2">
                                         <div class="input-group input-group-sm">
@@ -2394,8 +2409,8 @@
                                             </div>
                                         </div>
                                         <div class="mt-3">
-                                            <label class="form-label small text-secondary mb-0">Not</label>
-                                            <input type="text" class="form-control form-control-sm" id="mdSatisAciklama" maxlength="200" placeholder="İsteğe bağlı">
+                                            <label class="form-label small text-secondary mb-0">Özel not</label>
+                                            <input type="text" class="form-control form-control-sm" id="mdSatisAciklama" maxlength="120" placeholder="Örn. Emine hanıma yapılan iş">
                                         </div>
                                     </div>
                                 </div>
@@ -2596,6 +2611,11 @@
                                         </tr>
                                     </tfoot>
                                 </table>
+                            </div>
+                            <div class="mt-2">
+                                <label class="form-label small mb-0" for="mhdDuzenleOzelNot">Özel not</label>
+                                <input type="text" class="form-control form-control-sm" id="mhdDuzenleOzelNot" maxlength="120"
+                                       placeholder="Örn. Barış bey e yapılan iş" autocomplete="off">
                             </div>
                         </div>
                         <div id="mhdDuzenleOdemeAlani" class="d-none">
@@ -3641,6 +3661,11 @@
                             </div>
                             <small class="text-muted d-block mt-1" style="font-size:0.72rem;" id="hizliSatisMusteriAciklama">Devam için bir seçenek işaretleyin.</small>
                         </div>
+                        <div class="mt-2">
+                            <label class="form-label small text-muted mb-0" for="hizliSatisOzelNot">Özel not <span class="text-muted fw-normal">(isteğe bağlı)</span></label>
+                            <input type="text" class="form-control form-control-sm" id="hizliSatisOzelNot" maxlength="120"
+                                   placeholder="Örn. Emine hanıma yapılan iş" autocomplete="off">
+                        </div>
                                 </div>
                             </div>
                         </div>
@@ -3650,6 +3675,34 @@
                         <button type="button" class="btn btn-success btn-sm px-4 fw-bold shadow-sm rounded-pill" id="btnHizliKesinlestir" onclick="hizliSatisKesinlestir()" disabled>
                             <i class="fa-solid fa-circle-check me-1"></i>Tamamla
                         </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="modal fade" id="stokDisiModal" tabindex="-1" aria-labelledby="stokDisiModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-sm">
+                <div class="modal-content">
+                    <div class="modal-header py-2">
+                        <h5 class="modal-title" id="stokDisiModalLabel"><i class="fa-solid fa-pen-to-square me-2 text-warning"></i>Stok dışı ekle</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="stokDisiHedef" value="hizli">
+                        <p class="small text-muted mb-2" id="stokDisiAltMetin">Stoka yazılmaz; sadece satış sepetine eklenir.</p>
+                        <div class="d-flex flex-wrap gap-1 mb-2">
+                            <button type="button" class="btn btn-sm btn-outline-success" onclick="stokDisiSablonUygula('iscilik')">İşçilik</button>
+                            <button type="button" class="btn btn-sm btn-outline-warning" onclick="stokDisiSablonUygula('diger')">Diğer</button>
+                        </div>
+                        <label class="form-label small mb-0" for="stokDisiAciklama">Açıklama</label>
+                        <input type="text" class="form-control form-control-sm mb-2" id="stokDisiAciklama" maxlength="150" placeholder="Örn. özel malzeme…">
+                        <label class="form-label small mb-0" for="stokDisiTutar">Tutar (₺)</label>
+                        <input type="number" class="form-control form-control-sm" id="stokDisiTutar" min="0" step="0.01" inputmode="decimal">
+                    </div>
+                    <div class="modal-footer py-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">İptal</button>
+                        <button type="button" class="btn btn-sm btn-warning fw-semibold" onclick="stokDisiSepeteEkle()">Sepete ekle</button>
                     </div>
                 </div>
             </div>
@@ -4591,6 +4644,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="js/utils.js?v=1.0.92"></script>
     <script src="js/navigation.js?v=1.0.92"></script>
-    <script src="app.js?v=1.0.92"></script>
+    <script src="app.js?v=1.0.96"></script>
 </body>
 </html>

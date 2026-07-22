@@ -1969,13 +1969,8 @@ app.post('/api/musteri/:id/odeme', async (req, res) => {
     const row = info.recordset[0];
     const mevcutBakiye = Number(row.Bakiye || 0);
     const odemeTutar = Math.round(t * 100) / 100;
-    const finalBakiye = Math.max(0, Math.round((mevcutBakiye - odemeTutar) * 100) / 100);
-    if (odemeTutar > mevcutBakiye) {
-      return res.status(400).json({
-        success: false,
-        message: `Tahsilat bakiyeden büyük olamaz. Güncel bakiye: ${mevcutBakiye.toFixed(2)} ₺`,
-      });
-    }
+    /* Borç yokken / bakiyeden fazla: ön ödeme (müşteri alacağı = negatif bakiye) */
+    const finalBakiye = Math.round((mevcutBakiye - odemeTutar) * 100) / 100;
 
     const transaction = new sql.Transaction(pool);
     await transaction.begin();
@@ -1988,8 +1983,8 @@ app.post('/api/musteri/:id/odeme', async (req, res) => {
       rqBakiye.input('Tutar', sql.Decimal(18, 2), odemeTutar);
       const upd = await rqBakiye.query(`
         UPDATE Musteriler
-        SET Bakiye = Bakiye - @Tutar
-        WHERE MusteriID = @MusteriID AND Bakiye >= @Tutar
+        SET Bakiye = ISNULL(Bakiye, 0) - @Tutar
+        WHERE MusteriID = @MusteriID
       `);
       if (upd.rowsAffected[0] === 0) {
         await transaction.rollback();
@@ -3498,26 +3493,19 @@ async function musteriHareketOdemeDuzenleTxn(transaction, hareketID, tutar, odem
 
   const delta = Math.round((newTutar - oldTutar) * 100) / 100;
   if (delta > 0.009) {
-    const rqBakiye = new sql.Request(transaction);
-    rqBakiye.input('MusteriID', sql.Int, hareket.MusteriID);
-    rqBakiye.input('Delta', sql.Decimal(18, 2), delta);
-    const upd = await rqBakiye.query(`
-      UPDATE Musteriler
-      SET Bakiye = Bakiye - @Delta
-      WHERE MusteriID = @MusteriID AND Bakiye >= @Delta
-    `);
-    if (upd.rowsAffected[0] === 0) {
-      return {
-        success: false,
-        status: 409,
-        message: 'Tahsilat artırılamadı (müşteri bakiyesi yetersiz).',
-      };
-    }
+    await new sql.Request(transaction)
+      .input('MusteriID', sql.Int, hareket.MusteriID)
+      .input('Delta', sql.Decimal(18, 2), delta)
+      .query(`
+        UPDATE Musteriler
+        SET Bakiye = ISNULL(Bakiye, 0) - @Delta
+        WHERE MusteriID = @MusteriID
+      `);
   } else if (delta < -0.009) {
     await new sql.Request(transaction)
       .input('MusteriID', sql.Int, hareket.MusteriID)
       .input('Delta', sql.Decimal(18, 2), -delta)
-      .query('UPDATE Musteriler SET Bakiye = Bakiye + @Delta WHERE MusteriID = @MusteriID');
+      .query('UPDATE Musteriler SET Bakiye = ISNULL(Bakiye, 0) + @Delta WHERE MusteriID = @MusteriID');
   }
 
   if (Math.abs(delta) > 0.009) {
