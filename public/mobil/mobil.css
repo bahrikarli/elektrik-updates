@@ -1011,50 +1011,126 @@ body { overflow: hidden; }
   font-size: 1rem;
 }
 .sepet-satir {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 5px;
-  padding: 8px 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  align-items: center;
+  padding: 12px 0;
   border-bottom: 1px solid var(--border);
 }
 .sepet-satir:last-child { border-bottom: none; }
-.sepet-ad {
-  font-size: 0.88rem;
-  font-weight: 600;
-  line-height: 1.3;
-  width: 100%;
-  min-width: 0;
-  white-space: normal;
-  word-break: break-word;
-  padding: 0;
+
+/* Ad üstte, kutular hemen altında tek satır (Yılmaz mobil sepet) */
+.sepet-satir-ust-alt {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 7px 0;
 }
-.sepet-satir-kontroller {
+.sepet-satir-ust-alt .sepet-ad {
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.25;
+  grid-column: auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sepet-satir-ust-alt .sepet-satir-kontroller {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
+  width: 100%;
+}
+.sepet-satir-ust-alt .sepet-fiyat-wrap {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: none;
+}
+.sepet-satir-ust-alt .sepet-fiyat-label {
+  font-size: 0.72rem;
+}
+.sepet-satir-ust-alt .sepet-fiyat-input {
+  width: 6.8rem;
+  height: 30px;
+  padding: 2px 6px;
+  border-radius: 7px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.sepet-satir-ust-alt .sepet-miktar-wrap {
+  gap: 3px;
+}
+.sepet-satir-ust-alt .sepet-miktar-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  font-size: 0.95rem;
+}
+.sepet-satir-ust-alt .sepet-miktar {
+  min-width: 16px;
+  font-size: 0.85rem;
+}
+.sepet-satir-ust-alt .sepet-miktar-duzenle {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  font-size: 0.85rem;
+}
+.sepet-satir-ust-alt .sepet-satir-tutar {
+  margin-left: auto;
+  font-size: 0.8rem;
+  min-width: 3.6rem;
+  text-align: right;
+}
+.sepet-satir-ust-alt .sepet-sil {
+  font-size: 1.05rem;
+  padding: 0 1px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.sepet-ad {
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.3;
+  grid-column: 1 / -1;
+}
+.sepet-satir-kontroller {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
   width: 100%;
 }
 .sepet-fiyat-wrap {
   display: flex;
   align-items: center;
-  gap: 3px;
-  flex: 0 0 auto;
+  gap: 6px;
+  flex: 1 1 140px;
+  min-width: 140px;
+  max-width: 200px;
 }
 .sepet-fiyat-label {
-  font-size: 0.75rem;
+  font-size: 0.9rem;
   font-weight: 700;
   color: var(--muted);
   flex-shrink: 0;
 }
 .sepet-fiyat-input {
-  width: 108px;
-  height: 32px;
-  padding: 3px 8px;
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  padding: 8px 12px;
   border: 1px solid var(--border);
-  border-radius: 8px;
-  font-size: 0.86rem;
+  border-radius: 10px;
+  font-size: 1.05rem;
   font-weight: 700;
   text-align: right;
   background: var(--bg);
@@ -1062,41 +1138,36 @@ body { overflow: hidden; }
 .sepet-miktar-wrap {
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 8px;
   flex: 0 0 auto;
 }
 .sepet-miktar-btn {
-  width: 30px;
-  height: 30px;
+  width: 40px;
+  height: 40px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--bg);
-  font-size: 0.95rem;
-  line-height: 1;
+  font-size: 1.2rem;
   cursor: pointer;
-  padding: 0;
 }
 .sepet-miktar {
-  min-width: 18px;
+  min-width: 32px;
   text-align: center;
   font-weight: 700;
-  font-size: 0.88rem;
+  font-size: 1.05rem;
 }
 .sepet-satir-tutar {
   font-weight: 700;
   color: var(--primary);
-  font-size: 0.86rem;
-  white-space: nowrap;
-  flex: 0 0 auto;
-  min-width: 4.2rem;
-  text-align: right;
+  font-size: 1.05rem;
   margin-left: auto;
+  white-space: nowrap;
 }
 .sepet-sil {
   border: none;
   background: none;
   color: var(--danger);
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   line-height: 1;
   padding: 2px;
   cursor: pointer;

@@ -2081,11 +2081,11 @@
       $('btnSatisTamamla').disabled = false;
       sepet.forEach((s, idx) => {
         const li = document.createElement('li');
-        li.className = 'sepet-satir';
+        li.className = 'sepet-satir sepet-satir-ust-alt';
         const satirTutar = Math.round(s.birimFiyat * s.miktar * 100) / 100;
         const disiRozet = sepetDisiRozetHtml(s);
         li.innerHTML = `
-          <span class="sepet-ad">${esc(s.urunAdi)}${disiRozet}</span>
+          <div class="sepet-ad">${esc(s.urunAdi)}${disiRozet}</div>
           <div class="sepet-satir-kontroller">
             <label class="sepet-fiyat-wrap">
               <span class="sepet-fiyat-label">₺</span>
@@ -2272,11 +2272,11 @@
       if (btn) btn.disabled = false;
       musteriSatisSepet.forEach((s, idx) => {
         const li = document.createElement('li');
-        li.className = 'sepet-satir';
+        li.className = 'sepet-satir sepet-satir-ust-alt';
         const satirTutar = Math.round(s.birimFiyat * s.miktar * 100) / 100;
         const disiRozet = sepetDisiRozetHtml(s);
         li.innerHTML = `
-          <span class="sepet-ad">${esc(s.urunAdi)}${disiRozet}</span>
+          <div class="sepet-ad">${esc(s.urunAdi)}${disiRozet}</div>
           <div class="sepet-satir-kontroller">
             <label class="sepet-fiyat-wrap">
               <span class="sepet-fiyat-label">₺</span>
