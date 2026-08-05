@@ -8,9 +8,8 @@ dist/
 # Sürüm/release artefaktları
 release-v*/
 *.exe
-!demo/Elektrik-Otomasyon-Setup.exe
-!demo/Elektrik-Otomasyon.exe
 elektrik-otomasyon-*.zip
+demo/*.bak
 
 # Auto-update geçici dosyaları
 updates/staging-*/
